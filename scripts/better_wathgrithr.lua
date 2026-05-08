@@ -195,24 +195,6 @@ AddPrefabPostInit("wathgrithr", function(inst)
     end)
 end)
 
-AddComponentPostInit("beefalo", function(inst)
-    if not TheWorld.ismastersim then return inst end
-
-    local oldfn = inst.components.combat.GetAttacked
-    function inst.components.combat:GetAttacked(attacker, damage, weapon, stimuli, spdamage)
-        local rider = inst.rideable:GetRider()
-        if rider ~= nil and rider.prefab == "wathgrithr" and rider.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_saddle") then
-            rider.saved_redirectdamagefn = rider.combat.redirectdamagefn
-            rider.combat.redirectdamagefn = nil
-            rider.components.combat:GetAttacked(attacker, 0.5*damage, weapon, stimuli, spdamage)
-            rider.combat.redirectdamagefn = rider.saved_redirectdamagefn
-            rider.saved_redirectdamagefn = nil
-            oldfn(self, attacker, 0.5*damage, weapon, stimuli, spdamage)
-        else oldfn(self, attacker, damage, weapon, stimuli, spdamage) end
-    end
-end)
-
-
 --为战斗而生调整
 AddComponentPostInit("battleborn", function(self)
 
@@ -271,14 +253,35 @@ AddStategraphPostInit('wilson', function(self)
     local fun_swap = self.states['attack'].onenter
     self.states['attack'].onenter = function(inst)
         local equip = inst.components.inventory:GetEquippedItem(_G.EQUIPSLOTS.HANDS)
-        if inst.prefab == "wathgrithr" and inst.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_saddle") and
-            equip and equip:HasTag("weapon") and inst.components.rider and inst.components.rider:IsRiding() and
-            inst.components.rider:GetSaddle() == "saddle_wathgrithr" then
+        if inst.components.rider and inst.components.rider:IsRiding() and inst.prefab == "wathgrithr" and
+            inst.components.rider:GetSaddle().prefab == "saddle_wathgrithr" and
+            inst.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_saddle") and
+            equip and equip:HasTag("weapon") then
             equip:AddTag('rangedweapon')
             fun_swap(inst)
         else
             fun_swap(inst)
         end
+    end
+end)
+
+AddPrefabPostInit("beefalo", function(inst)
+    if not TheWorld.ismastersim then return inst end
+
+    local oldfn = inst.components.combat.GetAttacked
+    function inst.components.combat:GetAttacked(attacker, damage, weapon, stimuli, spdamage)
+        local rider = inst.components.rideable:GetRider()
+        print("[BetterWigfrid] GetAttacked, rider:", rider ~= nil and rider.prefab or "nil", "saddle:", rider and rider.components.rider:GetSaddle() ~= nil)
+        if rider ~= nil and rider.prefab == "wathgrithr" and
+        rider.components.rider:GetSaddle().prefab == "saddle_wathgrithr" and
+        rider.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_saddle") then
+            local combat = rider.components.combat
+            print("[BetterWigfrid] damage split, redirectfn:", combat.redirectdamagefn ~= nil, "damage:", damage)
+            combat.redirectdamagefn, rider._saved_redirect = nil, combat.redirectdamagefn
+            combat:GetAttacked(attacker, 0.5 * damage, weapon, stimuli, spdamage)
+            combat.redirectdamagefn, rider._saved_redirect = rider._saved_redirect, nil
+            oldfn(self, attacker, 0.5 * damage, weapon, stimuli, spdamage)
+        else oldfn(self, attacker, damage, weapon, stimuli, spdamage) end
     end
 end)
 
@@ -556,5 +559,59 @@ AddPrefabPostInit("battlesong_instant_panic", function(inst)
     end
 end)
 
+AddPrefabPostInit("charlie_stage_post", function(inst)
+    if not TheWorld.ismastersim then return end
 
+    inst:ListenForEvent("play_performed", function(inst, data)
+        local cast = inst.components.stageactingprop.cast
+        print("[BetterWigfrid] play_performed fired, cast:", cast ~= nil)
+        if cast then
+            for _, role_data in pairs(cast) do
+                print("[BetterWigfrid] cast member:", role_data.castmember ~= nil and role_data.castmember.prefab or "nil")
+                if role_data.castmember
+                    and role_data.castmember.prefab == "wathgrithr" then
+                    inst._wathgrithr_performed = true
+                    print("[BetterWigfrid] _wathgrithr_performed set to TRUE")
+                    if inst._clear_wathgrithr_task then
+                        inst._clear_wathgrithr_task:Cancel()
+                    end
+                    inst._clear_wathgrithr_task = inst:DoTaskInTime(15,function()
+                        inst._wathgrithr_performed = nil
+                        inst._clear_wathgrithr_task = nil
+                    end)
+                    break
+                end
+            end
+        end
+    end)
+end)
+
+AddPrefabPostInit("hedgehound", function(inst)
+    if not TheWorld.ismastersim then return end
+
+    inst:DoTaskInTime(0, function(inst)
+        print("[BetterWigfrid] hedgehound spawned, hedgeitem:", inst.hedgeitem or "nil")
+        if inst.hedgeitem then
+            local x, y, z = inst.Transform:GetWorldPosition()
+            local stages = TheSim:FindEntities(x, y, z, 30, nil, {"INLIMBO", "FX", "NOCLICK", "DECOR"})
+            print("[BetterWigfrid] nearby ents count:", #stages)
+            for _, stage in ipairs(stages) do
+                if stage._wathgrithr_performed then
+                    inst._wathgrithr_bonus = true
+                    print("[BetterWigfrid] _wathgrithr_bonus set to TRUE")
+                    break
+                end
+            end
+        end
+    end)
+
+    inst:ListenForEvent("death", function(inst)
+        print("[BetterWigfrid] hedgehound died, _wathgrithr_bonus:", inst._wathgrithr_bonus or "nil")
+        if inst._wathgrithr_bonus and math.random() < 0.5 then
+            local loot = (math.random() < 0.5) and "battlesong_instant_taunt" or "battlesong_instant_panic"
+            print("[BetterWigfrid] dropping loot:", loot)
+            inst.components.lootdropper:FlingItem(SpawnPrefab(loot))
+        end
+    end)
+end)
 

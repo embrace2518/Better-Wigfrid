@@ -3,7 +3,7 @@ name = "更好的女武神"
 description =
 "按照永不妥协的思路重做了薇格弗德的技能树。"
 author = "embrace"
-version = "1.2" -- This is the version of the template. Change it to your own number.
+version = "1.11" -- This is the version of the template. Change it to your own number.
 
 -- This is the URL name of the mod's thread on the forum; the part after the ? and before the first & in the url
 forumthread = ""

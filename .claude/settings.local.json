@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(unzip -l scripts.zip)",
+      "Bash(unzip -p scripts.zip scripts/actions.lua)",
+      "Bash(unzip -p scripts.zip scripts/componentactions.lua)",
+      "Bash(unzip -p scripts.zip scripts/stategraphs/SGwilson.lua)",
+      "Bash(unzip -p scripts.zip scripts/components/combat.lua)",
+      "Bash(unzip -p scripts.zip scripts/components/rider.lua)",
+      "Bash(grep -A 90 'name = \"attack\",$')",
+      "Bash(unzip -l player_multithrust.zip)",
+      "Bash(unzip -l player_mount_actions.zip)",
+      "Bash(grep -A 180 'State{.*\\\\n.*name = \"attack\",')",
+      "Bash(unzip -l \"F:/Steam/steamapps/common/Don't Starve Together/mods/Better Wigfrid/beefalo_build.zip\")",
+      "Bash(grep -E \"^[a-z_]{3,30}$\")",
+      "Bash(unzip *)"
+    ]
+  }
+}

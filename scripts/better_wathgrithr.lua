@@ -1,6 +1,9 @@
 -- 薇格弗德
-print("[BetterWigfrid] Script loaded")
-local song_lunarseed = GetModConfigData("song_lunarseed")
+
+-- 动作：落雷
+local FEATHER_LIGHTNING = Action({ rmb=true, distance=36, mount_valid=true, encumbered_valid=true })
+FEATHER_LIGHTNING.id = "FEATHER_LIGHTNING"
+FEATHER_LIGHTNING.str = "落雷"
 
 function PickSome(num, choices)
 	local l_choices = choices
@@ -17,10 +20,6 @@ local function DoRevive(target, singer)
     target:PushEvent("respawnfromghost", { user = singer })
 end
 
-local FEATHER_LIGHTNING = Action({ rmb=true, distance=36, mount_valid=true, encumbered_valid=true })
-FEATHER_LIGHTNING.id = "FEATHER_LIGHTNING"
-FEATHER_LIGHTNING.str = "落雷"
-
 FEATHER_LIGHTNING.fn = function(act)
     local doer = act.doer
     local pos = act:GetActionPoint()
@@ -36,8 +35,7 @@ FEATHER_LIGHTNING.fn = function(act)
         local x, y, z = pos.x, pos.y, pos.z
         local beefalos = TheSim:FindEntities(x, y, z, 3, {"beefalo"}, {"INLIMBO", "NOCLICK"})
         for _, beefalo in ipairs(beefalos) do
-            if beefalo.components.health:IsDead() and beefalo.GetBeefBellOwner ~= nil and beefalo:GetBeefBellOwner() == doer and
-            doer.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_3") then
+            if beefalo.components.health:IsDead() and doer.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_2") then
                 beefalo:OnRevived(doer)
                 doer:AddDebuff("shadow_beef_bell_curse", "shadow_beef_bell_curse")
             end
@@ -52,15 +50,22 @@ FEATHER_LIGHTNING.fn = function(act)
         end
 
         local hand_item = doer.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
-        if hand_item ~= nil and (hand_item.prefab == "spear_wathgrithr_lightning" or hand_item.prefab == "spear_wathgrithr_lightning_charged") then
-            doer:AddTag("insulated")
-            doer._feather_leap = {targetpos = pos, weapon = hand_item}
-            doer:DoTaskInTime(2, function(doer) doer:RemoveTag("insulated") end)
-            doer.components.talker:Say("我乘闪电而来！")
+        if hand_item ~= nil and hand_item:HasTag("aoeweapon_lunge") then
+            if (hand_item.components.rechargeable and not hand_item.components.rechargeable:IsCharged()) or
+            not doer.components.skilltreeupdater:IsActivated("wathgrithr_arsenal_spear_5") then
+            else
+                doer:AddTag("insulated")
+                doer._feather_leap = {targetpos = pos, weapon = hand_item}
+                doer:DoTaskInTime(2, function(doer) doer:RemoveTag("insulated") end)
+                doer.components.talker:Say("我乘闪电而来！")
+                if hand_item.components.rechargeable then
+                    hand_item.components.rechargeable:Discharge(hand_item._cooldown or TUNING.SPEAR_WATHGRITHR_LIGHTNING_LUNGE_COOLDOWN)
+                end
+            end
         end
 
         TheWorld:PushEvent("ms_sendlightningstrike", pos)
-        if math.random() < 0.2 then
+        if math.random() < 0.3 then
             TheWorld:PushEvent("ms_forceprecipitation", true)
         end
         return true
@@ -126,6 +131,7 @@ end
 
 local function GetPointSpecialActions(inst, pos, useitem, right)
     if right and useitem == nil then
+        -- 落雷（优先）
         local canblink
         if inst.checkingmapactions then
             canblink = inst:CanBlinkFromWithMap(inst.checkingmapactions_pos or inst:GetPosition())
@@ -133,7 +139,10 @@ local function GetPointSpecialActions(inst, pos, useitem, right)
             canblink = inst:CanBlinkTo(pos)
         end
         if canblink and inst.replica.inventory:Has("goose_feather", 1) then
-            return { ACTIONS.FEATHER_LIGHTNING }
+            if not (inst.components.rider and inst.components.rider:IsRiding()) or
+                inst.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_4") then
+                return { ACTIONS.FEATHER_LIGHTNING }
+            end
         end
     end
     return {}
@@ -248,6 +257,18 @@ AddComponentPostInit("battleborn", function(self)
     end
 end)
 
+local function IsWeaponEquipped(inst, weapon)
+    return weapon ~= nil
+        and weapon.components.equippable ~= nil
+        and weapon.components.equippable:IsEquipped()
+        and weapon.components.inventoryitem ~= nil
+        and weapon.components.inventoryitem:IsHeldBy(inst)
+end
+
+local function ValidateMultiThruster(inst)
+    return IsWeaponEquipped(inst, inst.sg.statemem.weapon) and inst.sg.statemem.weapon.components.multithruster ~= nil
+end
+
 --骑乘战斗
 AddStategraphPostInit('wilson', function(self)
     local fun_swap = self.states['attack'].onenter
@@ -255,12 +276,62 @@ AddStategraphPostInit('wilson', function(self)
         local equip = inst.components.inventory:GetEquippedItem(_G.EQUIPSLOTS.HANDS)
         if inst.components.rider and inst.components.rider:IsRiding() and inst.prefab == "wathgrithr" and
             inst.components.rider:GetSaddle().prefab == "saddle_wathgrithr" and
-            inst.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_saddle") and
+            inst.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_3") and
             equip and equip:HasTag("weapon") then
             equip:AddTag('rangedweapon')
             fun_swap(inst)
+            if equip.components.multithruster then
+                equip.components.multithruster:OnAttack()
+            end
         else
             fun_swap(inst)
+        end
+    end
+
+    self.states['multithrust_pre'].onenter = function(inst)
+        inst.components.locomotor:Stop()
+        if inst.components.rider and inst.components.rider:IsRiding() then
+            inst.AnimState:PlayAnimation("player_atk_pre")
+        else
+            inst.AnimState:PlayAnimation("multithrust_yell")
+        end
+        if inst.bufferedaction ~= nil and inst.bufferedaction.target ~= nil and inst.bufferedaction.target:IsValid() then
+            inst.sg.statemem.target = inst.bufferedaction.target
+            inst.components.combat:SetTarget(inst.sg.statemem.target)
+            inst:ForceFacePoint(inst.sg.statemem.target.Transform:GetWorldPosition())
+        end
+
+        if inst.components.playercontroller ~= nil then
+            inst.components.playercontroller:RemotePausePrediction()
+        end
+    end
+
+    self.states['multithrust'].onenter = function(inst, target)
+        inst.components.locomotor:Stop()
+        inst.AnimState:PlayAnimation("multithrust")
+        if not (inst.components.rider and inst.components.rider:IsRiding()) then
+            inst.Transform:SetEightFaced()
+        end
+
+        if target ~= nil and target:IsValid() then
+            inst.sg.statemem.target = target
+            inst:ForceFacePoint(target.Transform:GetWorldPosition())
+        end
+
+        inst.sg:SetTimeout(30 * FRAMES)
+
+        --[[if inst.components.playercontroller ~= nil then
+            inst.components.playercontroller:RemotePausePrediction()
+        end]]
+    end
+
+    self.states['multithrust'].onexit = function(inst)
+        inst.components.combat:SetTarget(nil)
+        if not (inst.components.rider and inst.components.rider:IsRiding()) then
+            inst.Transform:SetFourFaced()
+        end
+        if ValidateMultiThruster(inst) then
+            inst.sg.statemem.weapon.components.multithruster:StopThrusting(inst)
         end
     end
 end)
@@ -271,347 +342,86 @@ AddPrefabPostInit("beefalo", function(inst)
     local oldfn = inst.components.combat.GetAttacked
     function inst.components.combat:GetAttacked(attacker, damage, weapon, stimuli, spdamage)
         local rider = inst.components.rideable:GetRider()
-        print("[BetterWigfrid] GetAttacked, rider:", rider ~= nil and rider.prefab or "nil", "saddle:", rider and rider.components.rider:GetSaddle() ~= nil)
         if rider ~= nil and rider.prefab == "wathgrithr" and
         rider.components.rider:GetSaddle().prefab == "saddle_wathgrithr" and
-        rider.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_saddle") then
+        rider.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_3") then
             local combat = rider.components.combat
-            print("[BetterWigfrid] damage split, redirectfn:", combat.redirectdamagefn ~= nil, "damage:", damage)
             combat.redirectdamagefn, rider._saved_redirect = nil, combat.redirectdamagefn
-            combat:GetAttacked(attacker, 0.5 * damage, weapon, stimuli, spdamage)
+            combat:GetAttacked(attacker, 0.75 * damage, weapon, stimuli, spdamage)
             combat.redirectdamagefn, rider._saved_redirect = rider._saved_redirect, nil
-            oldfn(self, attacker, 0.5 * damage, weapon, stimuli, spdamage)
+            oldfn(self, attacker, 0.75 * damage, weapon, stimuli, spdamage)
         else oldfn(self, attacker, damage, weapon, stimuli, spdamage) end
     end
-end)
 
-local function CalcBatteryChargeMult(inst, battery)
-    local per = inst.components.finiteuses:GetPercent()
-	return (per >= 0.99 and 0) or (per >= 0.5 and 1) or 2
-end
-
-local function OnBatteryUsed(inst, battery, mult)
-    local owner = inst.components.inventoryitem:GetGrandOwner()
-	if mult <= 0 or inst.components.finiteuses:IsFull() then
-        return false, "CHARGE_FULL"
-    elseif not owner.components.skilltreeupdater:IsActivated("wathgrithr_arsenal_spear_5") then
-        return false, "SKILL_NEEDED"
-    end
-    local per = inst.components.fueled:GetPercent()
-    per = math.clamp(per + 0.5 * mult, 0, 1)
-    inst.components.finiteuses:SetPercent(per)
-    return true
-end
-
-local function OnLightningCharge(inst)
-    inst.components.finiteuses:SetPercent(1)
-end
-
--- 奔雷矛
-AddPrefabPostInit("spear_wathgrithr_lightning", function(inst)
-    inst:AddTag("lightningrod")
-
-    if not TheWorld.ismastersim then return inst end
-
-    inst:ListenForEvent("lightningstrike", OnLightningCharge)
-
-    inst:AddComponent("aoeweapon_leap")
-    inst.components.aoeweapon_leap:SetAOERadius(3)
-    inst.components.aoeweapon_leap:SetDamage(48)
-
-    inst:AddComponent("batteryuser")
-    inst.components.batteryuser:SetChargeMultFn(CalcBatteryChargeMult)
-    inst.components.batteryuser:SetOnBatteryUsedFn(OnBatteryUsed)
-    inst.components.batteryuser:SetAllowPartialCharge(true)
-end)
-
-local function OnMultChanged(inst)
-    if inst.electric > 0 then
-        if inst.electric > 2 then inst.electric = 2 end
-        inst.components.weapon:SetElectric(1, TUNING.SPEAR_WATHGRITHR_LIGHTNING_WET_DAMAGE_MULT + 0.5 * inst.electric)
-    else
-        inst.electric = 0
-        inst.components.weapon:SetElectric(1, TUNING.SPEAR_WATHGRITHR_LIGHTNING_WET_DAMAGE_MULT)
-    end
-end
-
-local function ondaycomplete(inst)
-    if inst.electric > 1 then
-        inst.electric = inst.electric - 1
-    else
-        inst.electric = 0
-        inst:StopWatchingWorldState("cycles", ondaycomplete)
-    end
-    OnMultChanged(inst)
-end
-
-local function CalcBatteryChargeMult_Charged(inst, battery)
-    local per = inst.components.finiteuses:GetPercent()
-	return (per >= 0.99 and 2 - inst.electric) or (3 - inst.electric)
-end
-
-local function OnBatteryUsed_Charged(inst, battery, mult)
-    local owner = inst.components.inventoryitem:GetGrandOwner()
-	if mult <= 0 or inst.components.finiteuses:IsFull() then
-        return false, "CHARGE_FULL"
-    elseif not owner.components.skilltreeupdater:IsActivated("wathgrithr_arsenal_spear_5") then
-        return false, "SKILL_NEEDED"
-    end
-
-    if mult >= 1 then
-        inst.components.finiteuses:SetPercent(1)
-        mult = mult - 1
-    end
-    inst.electric = inst.electric + mult
-    OnMultChanged(inst)
-    if inst.electric > 0 then inst:WatchWorldState("cycles", ondaycomplete) end
-    return true
-end
-
-local function OnLightningCharge_Charged(inst)
-    inst.components.finiteuses:SetPercent(1)
-    inst.electric = 2
-    OnMultChanged(inst)
-end
-
--- 充能奔雷矛
-AddPrefabPostInit("spear_wathgrithr_lightning_charged", function(inst)
-    inst:AddTag("lightningrod")
-
-    if not TheWorld.ismastersim then return inst end
-
-    inst.electric = 0
-    inst:ListenForEvent("lightningstrike", OnLightningCharge_Charged)
-
-    inst:AddComponent("aoeweapon_leap")
-    inst.components.aoeweapon_leap:SetAOERadius(4)
-    inst.components.aoeweapon_leap:SetDamage(68)
-
-    inst:AddComponent("batteryuser")
-    inst.components.batteryuser:SetChargeMultFn(CalcBatteryChargeMult_Charged)
-    inst.components.batteryuser:SetOnBatteryUsedFn(OnBatteryUsed_Charged)
-    inst.components.batteryuser:SetAllowPartialCharge(true)
-end)
-
-local function EquipTick(inst, dt)
-    local owner = inst.components.inventoryitem:GetGrandOwner()
-    if owner ~= nil and owner.prefab == "wathgrithr" and owner.components.skilltreeupdater:IsActivated("wathgrithr_arsenal_helmet_4") then
-        owner.components.singinginspiration:OnRidingTick(dt)
-    end
-end
-
--- 统帅头盔
-AddPrefabPostInit("wathgrithr_improvedhat", function(inst)
-    if not TheWorld.ismastersim then return inst end
-    inst.components.armor:InitCondition(2 * TUNING.ARMOR_WATHGRITHR_IMPROVEDHAT, TUNING.ARMOR_WATHGRITHR_IMPROVEDHAT_ABSORPTION)
-    inst.components.waterproofer:SetEffectiveness(TUNING.WATERPROOFNESS_MED)
-    inst.components.insulator:SetInsulation(TUNING.INSULATION_MED)
-
-    local old_oneuipfn = inst.components.equippable.onequipfn
-    inst.components.equippable:SetOnEquip(function(inst, owner, from_ground)
-        old_oneuipfn(inst, owner, from_ground)
-        if inst.equiptask == nil then
-            inst.equiptask = inst:DoPeriodicTask(6, EquipTick, 0, 6)
-        end
-    end)
-
-    local old_onunequipfn = inst.components.equippable.onunequipfn
-    inst.components.equippable:SetOnUnequip(function(inst, owner, from_ground)
-        old_onunequipfn(inst, owner, from_ground)
-        if inst.equiptask ~= nil then
-            inst.equiptask:Cancel()
-            inst.equiptask = nil
-        end
-    end)
-end)
-
-local function BattleSong_CanBeUpgraded(inst, item)
-    return not inst:HasTag("lunarseed")
-end
-
-local function BattleSong_OnUpgraded(inst, upgrader, item)
-    inst:AddTag("lunarseed")
-end
-
-local battlesongs = {
-    "battlesong_durability",
-    "battlesong_healthgain",
-    "battlesong_sanitygain",
-    "battlesong_sanityaura",
-    "battlesong_fireresistance"
-}
-
-if song_lunarseed then
-    AddPrefabPostInit("wathgrithr", function(inst)
-        inst:AddTag(UPGRADETYPES.WATHGRITHR_BATTLESONG.."_upgradeuser")
-    end)
-
-    for _, song in ipairs(battlesongs) do
-        AddPrefabPostInit(song, function(inst)
-            inst:AddTag("spore")
-            if not TheWorld.ismastersim then return inst end
-            if not inst:HasTag("lunarseed") then
-                inst:AddComponent("upgradeable")
-                inst.components.upgradeable.upgradetype = UPGRADETYPES.WATHGRITHR_BATTLESONG
-                inst.components.upgradeable:SetOnUpgradeFn(BattleSong_OnUpgraded)
-                inst.components.upgradeable:SetCanUpgradeFn(BattleSong_CanBeUpgraded)
+    -- 当女武神用牛铃绑定时，追加暗影牛铃同款绑定逻辑
+    local _SetBeefBellOwner = inst.SetBeefBellOwner
+    function inst:SetBeefBellOwner(bell, bell_user, ...)
+        _SetBeefBellOwner(self, bell, bell_user, ...)
+        if bell_user ~= nil and bell_user.prefab == "wathgrithr" and
+        bell_user.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_2") and
+        bell ~= nil and not bell:HasTag("shadowbell") then
+            -- 移除_onfollowerdied回调 → 牛死后不断开跟随
+            local leader = inst.components.follower ~= nil and inst.components.follower.leader or nil
+            if leader ~= nil and leader.components.leader ~= nil then
+                leader:RemoveEventCallback("death", leader.components.leader._onfollowerdied, inst)
             end
+            -- 尸体不烧焦
+            if inst.components.burnable ~= nil then
+                inst.components.burnable.nocharring = true
+            end
+        end
+    end
+
+    local _ShouldKeepCorpse = inst.ShouldKeepCorpse
+    function inst:ShouldKeepCorpse()
+        if inst.GetBeefBellOwner ~= nil then
+            local owner = inst:GetBeefBellOwner()
+            if owner ~= nil and owner:IsValid() and owner.prefab == "wathgrithr" then
+                return true
+            end
+        end
+        return _ShouldKeepCorpse(self)
+    end
+
+    -- 尸体侵蚀动画（与暗影牛铃完全一致）
+    local ERodeBeefalo = function(beef)
+        if beef:HasTag("NOCLICK") then return end
+        beef.persists = false
+        beef:AddTag("NOCLICK")
+        RemovePhysicsColliders(beef)
+        if beef.DynamicShadow ~= nil then
+            beef.DynamicShadow:Enable(false)
+        end
+        local easing = require("easing")
+        local multcolor = beef.AnimState:GetMultColour()
+        local ticktime = TheSim:GetTickTime()
+        local erodetime = 5
+        beef:StartThread(function()
+            local ticks = 0
+            while beef:IsValid() and (ticks * ticktime < erodetime) do
+                local n = ticks * ticktime / erodetime
+                local alpha = easing.inQuad(1 - n, 0, 1, 1)
+                local color = 1 - (n * 5)
+                color = math.min(multcolor, color)
+                beef.AnimState:SetErosionParams(n, .05, 1.0)
+                beef.AnimState:SetMultColour(color, color, color, math.max(.3, alpha))
+                ticks = ticks + 1
+                Yield()
+            end
+            beef:Remove()
         end)
     end
 
-    AddPrefabPostInit("purebrilliance", function(inst)
-        if not TheWorld.ismastersim then return inst end
-        inst:AddComponent("upgrader")
-        inst.components.upgrader.upgradetype = UPGRADETYPES.WATHGRITHR_IMPROVEDHAT_PRO
-    end)
-end
-
-AddPrefabPostInit("battlesong_sanityaura", function(inst)
-    if not TheWorld.ismastersim then return inst end
-
-    local oldfn = inst.songdata.ONAPPLY
-    inst.songdata.ONAPPLY = function(songbuff, target)
-        oldfn(songbuff, target)
-        if target.prefab == "wathgrithr" then
-            target.components.playerspeedmult:SetSpeedMult("battlesong_sanityaura", 1 + TUNING.BATTLESONG_SANITYURA_SPEEDMULT)
-        end
-    end
-
-    oldfn = inst.songdata.ONDETACH
-    inst.songdata.ONDETACH = function(songbuff, target)
-        oldfn(songbuff, target)
-        if target.prefab == "wathgrithr" then
-            target.components.playerspeedmult:RemoveSpeedMult("battlesong_sanityaura")
+    -- 解除牛铃时触发侵蚀
+    local _ClearBeefBellOwner = inst.ClearBeefBellOwner
+    function inst:ClearBeefBellOwner(...)
+        local owner = inst.GetBeefBellOwner ~= nil and inst:GetBeefBellOwner() or nil
+        local is_wathgrithr = owner ~= nil and owner:IsValid() and owner.prefab == "wathgrithr" and
+            owner.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_2")
+        local is_dead = inst.components.health ~= nil and inst.components.health:IsDead()
+        _ClearBeefBellOwner(self, ...)
+        if is_wathgrithr and is_dead then
+            ERodeBeefalo(inst)
         end
     end
 end)
-
-local function FireTick(inst, dt)
-    local owner = inst.components.inventoryitem:GetGrandOwner()
-    owner.components.groundpounder:GroundPound(owner:GetPosition())
-end
-
-AddPrefabPostInit("battlesong_fireresistance", function(inst)
-    if not TheWorld.ismastersim then return inst end
-
-    local oldfn = inst.songdata.ONAPPLY
-    inst.songdata.ONAPPLY = function(songbuff, target)
-        oldfn(songbuff, target)
-        if target.prefab == "wathgrithr" then
-            target.components.groundpounder:GroundPound(inst:GetPosition())
-            target.components.combat.externaldamagemultipliers:SetModifier(inst, TUNING.BATTLESONG_FIRE_VALUE, "battlesong_instant_taunt")
-            target.components.combat.externaldamagetakenmultipliers:SetModifier(inst, TUNING.BATTLESONG_FIRE_VALUE, "battlesong_instant_panic")
-            if target.firetask == nil then
-                target.firetask = inst:DoPeriodicTask(6, FireTick, 0, 6)
-            end
-        end
-    end
-
-    oldfn = inst.songdata.ONDETACH
-    inst.songdata.ONDETACH = function(songbuff, target)
-        oldfn(songbuff, target)
-        if target.prefab == "wathgrithr" then
-            target.components.combat.externaldamagemultipliers:RemoveModifier(inst, "battlesong_fireresistance")
-            target.components.combat.externaldamagetakenmultipliers:RemoveModifier(inst, "battlesong_fireresistance")
-             if inst.firetask ~= nil then
-                inst.firetask:Cancel()
-                inst.firetask = nil
-            end
-        end
-    end
-end)
-
-AddPrefabPostInit("battlesong_instant_taunt", function(inst)
-    if not TheWorld.ismastersim then return inst end
-
-    local old_instant = inst.songdata.ONINSTANT
-    inst.songdata.ONAPPLY = function(singer, target)
-        if old_instant then old_instant(singer, target) end
-        if not target:HasTag("wathgrithr_mock") then
-            target:Addtag("wathgrithr_mock")
-            target.components.combat.externaldamagemultipliers:SetModifier(singer, TUNING.BATTLESONG_INSTANT_VALUE, "battlesong_instant_taunt")
-        end
-    end
-end)
-
-AddPrefabPostInit("battlesong_instant_panic", function(inst)
-    if not TheWorld.ismastersim then return inst end
-
-    local old_panic = inst.songdata.ONPANIC
-    inst.songdata.ONAPPLY = function(singer, target)
-        if old_panic then old_panic(singer,target) end
-        if not target:HasTag("wathgrithr_panic") then
-            target:Addtag("wathgrithr_panic")
-            target.panic_time = TUNING.BATTLESONG_PANIC_TIME
-
-            target.components.combat.externaldamagetakenmultipliers:SetModifier(singer, 1 + TUNING.BATTLESONG_INSTANT_VALUE, "battlesong_instant_panic")
-
-            target.panicfn = target:DoPeriodicTask(1, function(target)
-                target.panic_time = target.panic_time - 1
-                if target.panic_time < 1 then
-                    target.components.combat.externaldamagetakenmultipliers:RemoveModifier(singer, "battlesong_instant_panic")
-                    target:RemoveTag("wathgrithr_taunt")
-                    target.panicfn:Cancel()
-                    target.panicfn = nil
-                end
-            end)
-        end
-    end
-end)
-
-AddPrefabPostInit("charlie_stage_post", function(inst)
-    if not TheWorld.ismastersim then return end
-
-    inst:ListenForEvent("play_performed", function(inst, data)
-        local cast = inst.components.stageactingprop.cast
-        print("[BetterWigfrid] play_performed fired, cast:", cast ~= nil)
-        if cast then
-            for _, role_data in pairs(cast) do
-                print("[BetterWigfrid] cast member:", role_data.castmember ~= nil and role_data.castmember.prefab or "nil")
-                if role_data.castmember
-                    and role_data.castmember.prefab == "wathgrithr" then
-                    inst._wathgrithr_performed = true
-                    print("[BetterWigfrid] _wathgrithr_performed set to TRUE")
-                    if inst._clear_wathgrithr_task then
-                        inst._clear_wathgrithr_task:Cancel()
-                    end
-                    inst._clear_wathgrithr_task = inst:DoTaskInTime(15,function()
-                        inst._wathgrithr_performed = nil
-                        inst._clear_wathgrithr_task = nil
-                    end)
-                    break
-                end
-            end
-        end
-    end)
-end)
-
-AddPrefabPostInit("hedgehound", function(inst)
-    if not TheWorld.ismastersim then return end
-
-    inst:DoTaskInTime(0, function(inst)
-        print("[BetterWigfrid] hedgehound spawned, hedgeitem:", inst.hedgeitem or "nil")
-        if inst.hedgeitem then
-            local x, y, z = inst.Transform:GetWorldPosition()
-            local stages = TheSim:FindEntities(x, y, z, 30, nil, {"INLIMBO", "FX", "NOCLICK", "DECOR"})
-            print("[BetterWigfrid] nearby ents count:", #stages)
-            for _, stage in ipairs(stages) do
-                if stage._wathgrithr_performed then
-                    inst._wathgrithr_bonus = true
-                    print("[BetterWigfrid] _wathgrithr_bonus set to TRUE")
-                    break
-                end
-            end
-        end
-    end)
-
-    inst:ListenForEvent("death", function(inst)
-        print("[BetterWigfrid] hedgehound died, _wathgrithr_bonus:", inst._wathgrithr_bonus or "nil")
-        if inst._wathgrithr_bonus and math.random() < 0.5 then
-            local loot = (math.random() < 0.5) and "battlesong_instant_taunt" or "battlesong_instant_panic"
-            print("[BetterWigfrid] dropping loot:", loot)
-            inst.components.lootdropper:FlingItem(SpawnPrefab(loot))
-        end
-    end)
-end)
-

@@ -75,7 +75,7 @@ local POSITIONS =
     wathgrithr_beefalo_1 =                      { x = BEEFALO_POS_X, y = POS_Y_1 },
     wathgrithr_beefalo_2 =                      { x = BEEFALO_POS_X, y = POS_Y_2 },
     wathgrithr_beefalo_3 =                      { x = BEEFALO_POS_X, y = POS_Y_3 },
-    wathgrithr_beefalo_saddle =                 { x = BEEFALO_POS_X, y = POS_Y_4 },
+    wathgrithr_beefalo_4 =                 { x = BEEFALO_POS_X, y = POS_Y_4 },
 
     wathgrithr_songs_instantsong_cd_lock =      { x = SONGS_POS_X_1, y = POS_Y_1 },
     wathgrithr_songs_instantsong_cd =           { x = SONGS_POS_X_2, y = POS_Y_1 },
@@ -328,9 +328,8 @@ local function BuildSkillsData(SkillTreeFns)
         --------------------------------------------------------------------------
 
         wathgrithr_beefalo_1 = {
-            icon = "wathgrithr_beefalo_1",
             group = "beefalo",
-            tags = { "beefalobucktime" },
+            tags = { "beefalobucktime", "beefalodomestication" },
 
             root = true,
             connects = { "wathgrithr_beefalo_2" },
@@ -339,23 +338,23 @@ local function BuildSkillsData(SkillTreeFns)
         },
 
         wathgrithr_beefalo_2 = {
-            icon = "wathgrithr_beefalo_2",
+            icon = "wathgrithr_beefalo_3",
             group = "beefalo",
-            tags = { "beefalodomestication" },
+            tags = {},
 
-            connects = { "wathgrithr_beefalo_3" },
         },
 
         wathgrithr_beefalo_3 = {
-            icon = "wathgrithr_beefalo_3",
+            icon = "wathgrithr_beefalo_saddle",
             group = "beefalo",
-            tags = { "beefalobattle" },
+            tags = {},
 
-            connects = { "wathgrithr_beefalo_saddle" },
+            root = true,
+            connects = { "wathgrithr_beefalo_4" },
         },
 
-        -- 牛上战斗
-        wathgrithr_beefalo_saddle = {
+        wathgrithr_beefalo_4 = {
+            icon = "wathgrithr_beefalo_2",
             group = "beefalo",
             tags = { "beefalorecover" },
         },

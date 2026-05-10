@@ -9,6 +9,13 @@ else
 end
 
 modimport("scripts/better_wathgrithr")
+modimport("scripts/wathgrithr_arsenal")
+modimport("scripts/wathgrithr_battlesongs")
+modimport("scripts/components/multithruster")
+
+Assets = {
+    Asset("ANIM", "anim/better_wathgrithr.zip"),
+}
 
 -- 登记技能树
 local BuildSkillsData = require("prefabs/skilltree_better_wathgrithr")
@@ -17,10 +24,14 @@ local data = BuildSkillsData(defs.FN)
 defs.CreateSkillTreeFor("wathgrithr", data.SKILLS)
 defs.SKILLTREE_ORDERS["wathgrithr"] = data.ORDERS
 
+TUNING.SPEAR_WATHGRITHR_LIGHTNING_LUNGE_COOLDOWN = 3
+TUNING.SPEAR_WATHGRITHR_LIGHTNING_CHARGED_LUNGE_COOLDOWN = 1.5
+
 TUNING.BATTLESONG_DURABILITY_MOD = 0.66 --0.75
 TUNING.BATTLESONG_SANITYURA_SPEEDMULT = 0.15
-TUNING.BATTLESONG_FIRE_VALUE = 2
-TUNING.BATTLESONG_INSTANT_VALUE = 0.5
+TUNING.BATTLESONG_FIRE_VALUE1 = 1.3 -- 造成伤害
+TUNING.BATTLESONG_FIRE_VALUE2 = 2.0 -- 受到伤害
+TUNING.BATTLESONG_INSTANT_VALUE = 0.3
 
 UPGRADETYPES.WATHGRITHR_BATTLESONG = "purebrilliance"
 

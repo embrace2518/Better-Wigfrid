@@ -22,6 +22,7 @@ end
 
 local function SpearWathgrithrLightning_Common(inst)
     inst:AddTag("lightningrod")
+    inst._attack_mode = 1 -- 1=突刺, 2=跃击, 3=奔雷
 
     if not TheWorld.ismastersim then return inst end
 
@@ -32,6 +33,21 @@ local function SpearWathgrithrLightning_Common(inst)
     inst.components.batteryuser:SetAllowPartialCharge(true)
 
     inst:AddComponent("multithruster")
+
+    -- 只在奔雷模式(3)下启用 aoetargeting
+    inst.UpdateAoeTargeting = function(inst)
+        local charged = inst.components.rechargeable:IsCharged()
+        local owner = inst.components.inventoryitem:GetGrandOwner()
+        local skill4 = owner and owner.components.skilltreeupdater
+            and owner.components.skilltreeupdater:IsActivated("wathgrithr_arsenal_spear_4")
+        inst.components.aoetargeting:SetEnabled(charged and skill4 and inst._attack_mode == 3)
+    end
+
+    local _old_charged = inst.components.rechargeable.onchargedfn
+    inst.components.rechargeable:SetOnChargedFn(function(inst)
+        if _old_charged then _old_charged(inst) end
+        inst:UpdateAoeTargeting()
+    end)
 end
 
 local function SpearWathgrithrLightning_Base(inst)
@@ -69,7 +85,7 @@ AddPrefabPostInit("wathgrithr_improvedhat", function(inst)
 
     local old_oneuipfn = inst.components.equippable.onequipfn
     inst.components.equippable:SetOnEquip(function(inst, owner, from_ground)
-        old_oneuipfn(inst, owner, from_ground)
+        if old_oneuipfn then old_oneuipfn(inst, owner, from_ground) end
         if inst.equiptask == nil then
             inst.equiptask = inst:DoPeriodicTask(6, EquipTick, 0, 6)
         end
@@ -77,7 +93,7 @@ AddPrefabPostInit("wathgrithr_improvedhat", function(inst)
 
     local old_onunequipfn = inst.components.equippable.onunequipfn
     inst.components.equippable:SetOnUnequip(function(inst, owner, from_ground)
-        old_onunequipfn(inst, owner, from_ground)
+        if old_onunequipfn then old_onunequipfn(inst, owner, from_ground) end
         if inst.equiptask ~= nil then
             inst.equiptask:Cancel()
             inst.equiptask = nil

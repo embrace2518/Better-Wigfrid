@@ -42,57 +42,6 @@ if song_lunarseed then
     end)
 end
 
-AddPrefabPostInit("battlesong_sanityaura", function(inst)
-    if not TheWorld.ismastersim then return inst end
-
-    local oldfn = inst.songdata.ONAPPLY
-    inst.songdata.ONAPPLY = function(songbuff, target)
-        oldfn(songbuff, target)
-        target.components.playerspeedmult:SetSpeedMult("battlesong_sanityaura", 1 + TUNING.BATTLESONG_SANITYURA_SPEEDMULT)
-    end
-
-    oldfn = inst.songdata.ONDETACH
-    inst.songdata.ONDETACH = function(songbuff, target)
-        oldfn(songbuff, target)
-        target.components.playerspeedmult:RemoveSpeedMult("battlesong_sanityaura")
-    end
-end)
-
-local function FireTick(inst, dt)
-    local owner = inst.components.inventoryitem:GetGrandOwner()
-    owner.components.groundpounder:GroundPound(owner:GetPosition())
-end
-
-AddPrefabPostInit("battlesong_fireresistance", function(inst)
-    if not TheWorld.ismastersim then return inst end
-
-    local oldfn = inst.songdata.ONAPPLY
-    inst.songdata.ONAPPLY = function(songbuff, target)
-        oldfn(songbuff, target)
-        if target.prefab == "wathgrithr" then
-            target.components.groundpounder:GroundPound(inst:GetPosition())
-            target.components.combat.externaldamagemultipliers:SetModifier(inst, TUNING.BATTLESONG_FIRE_VALUE1, "battlesong_instant_taunt")
-            target.components.combat.externaldamagetakenmultipliers:SetModifier(inst, TUNING.BATTLESONG_FIRE_VALUE2, "battlesong_instant_panic")
-            if target.firetask == nil then
-                target.firetask = inst:DoPeriodicTask(6, FireTick, 0, 6)
-            end
-        end
-    end
-
-    oldfn = inst.songdata.ONDETACH
-    inst.songdata.ONDETACH = function(songbuff, target)
-        oldfn(songbuff, target)
-        if target.prefab == "wathgrithr" then
-            target.components.combat.externaldamagemultipliers:RemoveModifier(inst, "battlesong_fireresistance")
-            target.components.combat.externaldamagetakenmultipliers:RemoveModifier(inst, "battlesong_fireresistance")
-             if inst.firetask ~= nil then
-                inst.firetask:Cancel()
-                inst.firetask = nil
-            end
-        end
-    end
-end)
-
 AddPrefabPostInit("battlesong_instant_taunt", function(inst)
     if not TheWorld.ismastersim then return inst end
 

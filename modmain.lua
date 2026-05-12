@@ -4,18 +4,23 @@ local lan = (_G.LanguageTranslator.defaultlang == "zh") and "zh" or "en"
 
 if lan == "zh" then
     modimport("languages/chs")
-else
-    modimport("languages/en")
 end
-
-modimport("scripts/better_wathgrithr")
-modimport("scripts/wathgrithr_arsenal")
-modimport("scripts/wathgrithr_battlesongs")
-modimport("scripts/components/multithruster")
 
 Assets = {
     Asset("ANIM", "anim/better_wathgrithr.zip"),
+    Asset("ANIM", "anim/winona_spotlight.zip"),
 }
+PrefabFiles = { "wathgrithr_stageusher" }
+
+modimport("scripts/components/multithruster")
+
+modimport("scripts/actions/wathgrithr_lightning")
+modimport("scripts/actions/wathgrithr_show")
+modimport("scripts/actions/wathgrithr_sing")
+modimport("scripts/better_wathgrithr")
+modimport("scripts/wathgrithr_arsenal")
+modimport("scripts/wathgrithr_battlesongs")
+modimport("scripts/wathgrithr_rider")
 
 -- 登记技能树
 local BuildSkillsData = require("prefabs/skilltree_better_wathgrithr")
@@ -24,14 +29,21 @@ local data = BuildSkillsData(defs.FN)
 defs.CreateSkillTreeFor("wathgrithr", data.SKILLS)
 defs.SKILLTREE_ORDERS["wathgrithr"] = data.ORDERS
 
-TUNING.SPEAR_WATHGRITHR_LIGHTNING_LUNGE_COOLDOWN = 3
-TUNING.SPEAR_WATHGRITHR_LIGHTNING_CHARGED_LUNGE_COOLDOWN = 1.5
+TUNING.SPEAR_WATHGRITHR_LIGHTNING_LUNGE_COOLDOWN = 6
+TUNING.SPEAR_WATHGRITHR_LIGHTNING_CHARGED_LUNGE_COOLDOWN = 3
 
+TUNING.INSPIRATION_GAIN_RATE = 0
 TUNING.BATTLESONG_DURABILITY_MOD = 0.66 --0.75
-TUNING.BATTLESONG_SANITYURA_SPEEDMULT = 0.15
-TUNING.BATTLESONG_FIRE_VALUE1 = 1.3 -- 造成伤害
-TUNING.BATTLESONG_FIRE_VALUE2 = 2.0 -- 受到伤害
 TUNING.BATTLESONG_INSTANT_VALUE = 0.3
+TUNING.BATTLESONG_PANIC_TIME = 6
+
+TUNING.WATHGRITHR_SING_INSPIRE_PER_HIRE = 5
+TUNING.WATHGRITHR_SING_INSPIRE_PER_CROP = 1
+TUNING.WATHGRITHR_SING_INSPIRE_COOLDOWN = 60
+TUNING.WATHGRITHR_SING_DAILY_HIRE_MAX = 20
+TUNING.WATHGRITHR_SING_DAILY_CROP_MAX = 10
+TUNING.WATHGRITHR_SING_MAX_FOLLOWERS = 4
+TUNING.WATHGRITHR_SING_HIRE_TIME = TUNING.TOTAL_DAY_TIME / 4
 
 UPGRADETYPES.WATHGRITHR_BATTLESONG = "purebrilliance"
 

@@ -13,7 +13,10 @@
       "Bash(grep -A 180 'State{.*\\\\n.*name = \"attack\",')",
       "Bash(unzip -l \"F:/Steam/steamapps/common/Don't Starve Together/mods/Better Wigfrid/beefalo_build.zip\")",
       "Bash(grep -E \"^[a-z_]{3,30}$\")",
-      "Bash(unzip *)"
+      "Bash(unzip *)",
+      "Bash(cd \"f:/Steam/steamapps/common/Don't Starve Together\" && unzip -l \"anim/wathgrithr_sing.zip\" 2>/dev/null | head -30)",
+      "Read(//f/Steam/steamapps/common/Don't Starve Together/**)",
+      "Bash(grep -oP '[a-z_]{3,}')"
     ]
   }
 }

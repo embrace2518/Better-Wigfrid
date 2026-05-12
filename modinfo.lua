@@ -1,5 +1,5 @@
 -- This information tells other players more about the mod
-name = "更好的女武神"
+name = "薇格弗德的演出"
 description =
 "薇格弗德现在是真正的骑士！"
 author = "embrace"

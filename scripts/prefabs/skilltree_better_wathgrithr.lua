@@ -75,7 +75,7 @@ local POSITIONS =
     wathgrithr_beefalo_1 =                      { x = BEEFALO_POS_X, y = POS_Y_1 },
     wathgrithr_beefalo_2 =                      { x = BEEFALO_POS_X, y = POS_Y_2 },
     wathgrithr_beefalo_3 =                      { x = BEEFALO_POS_X, y = POS_Y_3 },
-    wathgrithr_beefalo_4 =                 { x = BEEFALO_POS_X, y = POS_Y_4 },
+    wathgrithr_beefalo_saddle =                 { x = BEEFALO_POS_X, y = POS_Y_4 },
 
     wathgrithr_songs_instantsong_cd_lock =      { x = SONGS_POS_X_1, y = POS_Y_1 },
     wathgrithr_songs_instantsong_cd =           { x = SONGS_POS_X_2, y = POS_Y_1 },
@@ -134,7 +134,7 @@ local ONACTIVATE_FNS = {
 
     Beefalo = function(inst)
         if inst.components.rider ~= nil and inst.components.rider:IsRiding() then
-            inst._riding_music:push()
+            if inst._riding_music ~= nil then inst._riding_music:push() end
         end
     end,
 
@@ -345,16 +345,16 @@ local function BuildSkillsData(SkillTreeFns)
         },
 
         wathgrithr_beefalo_3 = {
-            icon = "wathgrithr_beefalo_saddle",
+            icon = "wathgrithr_beefalo_2",
             group = "beefalo",
             tags = {},
 
             root = true,
-            connects = { "wathgrithr_beefalo_4" },
+            connects = { "wathgrithr_beefalo_saddle" },
         },
 
-        wathgrithr_beefalo_4 = {
-            icon = "wathgrithr_beefalo_2",
+        wathgrithr_beefalo_saddle = {
+            icon = "wathgrithr_beefalo_saddle",
             group = "beefalo",
             tags = { "beefalorecover" },
         },

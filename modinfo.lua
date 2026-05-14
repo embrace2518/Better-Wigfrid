@@ -3,7 +3,7 @@ name = "薇格弗德的演出"
 description =
 "薇格弗德现在是真正的骑士！"
 author = "embrace"
-version = "1.123" -- This is the version of the template. Change it to your own number.
+version = "1.31" -- This is the version of the template. Change it to your own number.
 
 -- This is the URL name of the mod's thread on the forum; the part after the ? and before the first & in the url
 forumthread = ""
@@ -28,19 +28,4 @@ icon = "modicon.tex"
 -- The mod's tags displayed on the server list
 server_filter_tags = {
     "wathgrithr",
-}
-
-configuration_options = {
-
-    { name = "Title", label = "其他改动", options = { { description = "", data = "0" }, }, default = "0", },
-    {
-        name = "song_lunarseed",
-        label = "非阵营战歌改动",
-        hover = "非阵营战歌可以放在启迪之冠中，并在用天体珠宝升级后，视为放置天体珠宝。",
-        options = {
-            { description = "关闭", data = false, hover = "" },
-            { description = "开启", data = true, hover = "" },
-        },
-        default = true,
-    },
 }

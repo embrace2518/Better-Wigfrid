@@ -129,7 +129,6 @@ AddComponentPostInit("singinginspiration", function(self)
     self.OnHitOther = function() end
     self.OnAttacked = function() end
     function self:DoDelta(delta, forceupdate)
-        local prev = self.current
         self.current = math.min(math.max(self.current + delta, 0), self.max)
 
         local newpercent = self:GetPercent()
@@ -150,7 +149,6 @@ AddComponentPostInit("singinginspiration", function(self)
 
     function self:OnUpdate(dt)
         if self.inst:HasTag("wathgrithr_show") then
-             print("[DEBUG] OnUpdate called, current:", self.current, "max:", self.max, "dt:", dt)
             self.is_draining = true
             local head_item = self.inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HEADS)
             if head_item ~= nil and head_item.prefab == "wathgrithr_improvedhat" and

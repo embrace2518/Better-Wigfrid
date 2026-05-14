@@ -2,18 +2,6 @@ local function HasSpearSkill(owner, skill)
     return owner and owner.components.skilltreeupdater and owner.components.skilltreeupdater:IsActivated(skill)
 end
 
-local function ShouldAddMultithrusterTag(owner)
-    -- Need spear_1 to use multithrust at all
-    if not HasSpearSkill(owner, "wathgrithr_arsenal_spear_1") then
-        return false
-    end
-    -- Riding needs additional beefalo_4
-    if owner.components.rider and owner.components.rider:IsRiding() then
-        return HasSpearSkill(owner, "wathgrithr_beefalo_4")
-    end
-    return true
-end
-
 local Multithruster = Class(function(self, inst)
     self.inst = inst
 
@@ -22,7 +10,9 @@ local Multithruster = Class(function(self, inst)
         inst.components.rechargeable:SetOnChargedFn(function(inst)
             if old_oncharged then old_oncharged(inst) end
             local owner = self.inst.components.inventoryitem and self.inst.components.inventoryitem:GetGrandOwner()
-            if ShouldAddMultithrusterTag(owner) then
+            if owner:HasTag("wathgrithr_show") and HasSpearSkill(owner, "wathgrithr_arsenal_spear_1") and
+            not (inst:HasTag("attackmode_leap") or inst:HasTag("attackmode_lunge")) and
+            (not (owner.components.rider and owner.components.rider:IsRiding()) or HasSpearSkill(owner, "wathgrithr_beefalo_saddle")) then
                 self.inst:AddTag("multithruster")
             end
         end)
@@ -31,20 +21,7 @@ local Multithruster = Class(function(self, inst)
         inst.components.rechargeable:SetOnDischargedFn(function(inst)
             if old_ondischarged then old_ondischarged(inst) end
             self.inst:RemoveTag("multithruster")
-            local owner = self.inst.components.inventoryitem and self.inst.components.inventoryitem:GetGrandOwner()
-            if owner and owner.components.rider and owner.components.rider:IsRiding() then
-                owner.AnimState:SetBank("wilsonbeefalo")
-            end
         end)
-
-        if inst.components.rechargeable:IsCharged() then
-            local owner = self.inst.components.inventoryitem and self.inst.components.inventoryitem:GetGrandOwner()
-            if ShouldAddMultithrusterTag(owner) then
-                self.inst:AddTag("multithruster")
-            end
-        end
-    else
-        self.inst:AddTag("multithruster")
     end
 end)
 
@@ -60,21 +37,12 @@ function Multithruster:OnAttack()
 end
 
 function Multithruster:StartThrusting(player)
-    if not HasSpearSkill(player, "wathgrithr_arsenal_spear_1") then
-        return false
-    end
     self._thrust_repair_count = 0
-    if player.sg then
-        player.sg:PushEvent("start_multithrust")
-        return true
-    end
-    return false
+    player.sg:PushEvent("start_multithrust")
 end
 
 function Multithruster:DoThrust(player, target)
-    if player.sg then
-        player.sg:PushEvent("do_multithrust")
-    end
+    player.sg:PushEvent("do_multithrust")
     player.components.combat:DoAttack(target)
     target = target or (player.components.combat and player.components.combat.target)
     if target and self.inst.components.finiteuses and self.inst.components.upgradeable == nil then
@@ -90,13 +58,11 @@ function Multithruster:DoThrust(player, target)
 end
 
 function Multithruster:StopThrusting(player)
-    if player.sg then
-        player.sg:PushEvent("stop_multithrust")
-    end
-    if self.inst.components.rechargeable then
-        local mult = HasSpearSkill(player, "wathgrithr_arsenal_spear_2") and 2 or 4
-        self.inst.components.rechargeable:Discharge(mult * (self.inst._cooldown or TUNING.SPEAR_WATHGRITHR_LIGHTNING_LUNGE_COOLDOWN))
-    end
+    player.sg:PushEvent("stop_multithrust")
+
+    local mult = HasSpearSkill(player, "wathgrithr_arsenal_spear_2") and 2 or 4
+    self.inst.components.rechargeable:Discharge(mult * (self.inst._cooldown or TUNING.SPEAR_WATHGRITHR_LIGHTNING_LUNGE_COOLDOWN))
+
 end
 
 return Multithruster

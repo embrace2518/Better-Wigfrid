@@ -22,7 +22,6 @@ end
 
 local function SpearWathgrithrLightning_Common(inst)
     inst:AddTag("lightningrod")
-    inst._attack_mode = 1 -- 1=突刺, 2=跃击, 3=奔雷
 
     if not TheWorld.ismastersim then return inst end
 
@@ -40,7 +39,7 @@ local function SpearWathgrithrLightning_Common(inst)
         local owner = inst.components.inventoryitem:GetGrandOwner()
         local skill4 = owner and owner.components.skilltreeupdater
             and owner.components.skilltreeupdater:IsActivated("wathgrithr_arsenal_spear_4")
-        inst.components.aoetargeting:SetEnabled(charged and skill4 and inst._attack_mode == 3)
+        inst.components.aoetargeting:SetEnabled(charged and skill4 and inst:HasTag("attackmode_lunge"))
     end
 
     local _old_charged = inst.components.rechargeable.onchargedfn
@@ -63,18 +62,20 @@ local function SpearWathgrithrLightning_Charged(inst)
     inst.components.aoeweapon_leap:SetAOERadius(3)
     inst.components.aoeweapon_leap:SetDamage(68)
 end
--- 奔雷矛
+
+-- 长矛 and 奔雷矛
+AddPrefabPostInit("spear_wathgrithr", function (inst)
+    if not TheWorld.ismastersim then return inst end
+    inst:AddComponent("rechargeable")
+    inst:AddComponent("multithruster")
+    inst._cooldown = TUNING.SPEAR_WATHGRITHR_LIGHTNING_LUNGE_COOLDOWN
+    inst.components.rechargeable:Discharge(inst._cooldown)
+end)
+
 AddPrefabPostInit("spear_wathgrithr_lightning", SpearWathgrithrLightning_Base)
 
 AddPrefabPostInit("spear_wathgrithr_lightning_charged", SpearWathgrithrLightning_Charged)
 
-
-local function EquipTick(inst, dt)
-    local owner = inst.components.inventoryitem:GetGrandOwner()
-    if owner ~= nil and owner.prefab == "wathgrithr" and owner.components.skilltreeupdater:IsActivated("wathgrithr_arsenal_helmet_4") then
-        owner.components.singinginspiration:OnRidingTick(dt)
-    end
-end
 
 -- 统帅头盔
 AddPrefabPostInit("wathgrithr_improvedhat", function(inst)
@@ -82,21 +83,4 @@ AddPrefabPostInit("wathgrithr_improvedhat", function(inst)
     inst.components.armor:InitCondition(2 * TUNING.ARMOR_WATHGRITHR_IMPROVEDHAT, TUNING.ARMOR_WATHGRITHR_IMPROVEDHAT_ABSORPTION)
     inst.components.waterproofer:SetEffectiveness(TUNING.WATERPROOFNESS_MED)
     inst.components.insulator:SetInsulation(TUNING.INSULATION_MED)
-
-    local old_oneuipfn = inst.components.equippable.onequipfn
-    inst.components.equippable:SetOnEquip(function(inst, owner, from_ground)
-        if old_oneuipfn then old_oneuipfn(inst, owner, from_ground) end
-        if inst.equiptask == nil then
-            inst.equiptask = inst:DoPeriodicTask(6, EquipTick, 0, 6)
-        end
-    end)
-
-    local old_onunequipfn = inst.components.equippable.onunequipfn
-    inst.components.equippable:SetOnUnequip(function(inst, owner, from_ground)
-        if old_onunequipfn then old_onunequipfn(inst, owner, from_ground) end
-        if inst.equiptask ~= nil then
-            inst.equiptask:Cancel()
-            inst.equiptask = nil
-        end
-    end)
 end)

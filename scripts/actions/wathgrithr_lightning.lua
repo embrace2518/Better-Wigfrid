@@ -1,7 +1,12 @@
 -- 动作：落雷
 local WATHGRITHR_LIGHTNING = Action({ priority=2, rmb=true, distance=36, mount_valid=true, encumbered_valid=true })
 WATHGRITHR_LIGHTNING.id = "WATHGRITHR_LIGHTNING"
-WATHGRITHR_LIGHTNING.str = "落雷"
+WATHGRITHR_LIGHTNING.strfn = function(act)
+    if act.doer:HasTag("wathgrithr_show") then
+        return "LEAP"
+    end
+    return "LIGHTNING"
+end
 
 function PickSome(num, choices)
 	local l_choices = choices
@@ -27,7 +32,8 @@ WATHGRITHR_LIGHTNING.fn = function(act)
     if pos.y == nil then
         pos = Vector3(pos.x, 0, pos.z)
     end
-    if not doer:HasTag("wathgrithr_show")and doer.components.singinginspiration:GetPercent() > 0.2 then
+    local hand_item = doer.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
+    if not doer:HasTag("wathgrithr_show") and doer.components.singinginspiration:GetPercent() > 0.2 then
         doer.components.singinginspiration:DoDelta(-20)
 
         local x, y, z = pos.x, pos.y, pos.z
@@ -52,15 +58,9 @@ WATHGRITHR_LIGHTNING.fn = function(act)
             TheWorld:PushEvent("ms_forceprecipitation", true)
         end
     else
-        local hand_item = doer.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
-        if hand_item.components.rechargeable and hand_item.components.rechargeable:IsCharged() and
-            doer.components.skilltreeupdater:IsActivated("wathgrithr_arsenal_spear_5") then
-            doer._feather_leap = {targetpos = pos, weapon = hand_item}
-            doer.components.talker:Say("我乘闪电而来！")
-            if hand_item.components.rechargeable then
-                hand_item.components.rechargeable:Discharge(hand_item._cooldown or TUNING.SPEAR_WATHGRITHR_LIGHTNING_LUNGE_COOLDOWN)
-            end
-        end
+        doer._feather_leap = {targetpos = pos, weapon = hand_item}
+        doer.components.talker:Say("我乘闪电而来！")
+        hand_item.components.rechargeable:Discharge(hand_item._cooldown or TUNING.SPEAR_WATHGRITHR_LIGHTNING_LUNGE_COOLDOWN)
     end
     return false
 end

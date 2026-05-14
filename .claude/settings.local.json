@@ -16,7 +16,8 @@
       "Bash(unzip *)",
       "Bash(cd \"f:/Steam/steamapps/common/Don't Starve Together\" && unzip -l \"anim/wathgrithr_sing.zip\" 2>/dev/null | head -30)",
       "Read(//f/Steam/steamapps/common/Don't Starve Together/**)",
-      "Bash(grep -oP '[a-z_]{3,}')"
+      "Bash(grep -oP '[a-z_]{3,}')",
+      "Bash(python3)"
     ]
   }
 }

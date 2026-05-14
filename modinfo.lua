@@ -1,9 +1,9 @@
 -- This information tells other players more about the mod
 name = "薇格弗德的演出"
 description =
-"薇格弗德现在是真正的骑士！"
+"薇格弗德时刻需要为演出积累灵感，利用她美妙的歌声会是一个不错的主意。在此期间，舞台之手会帮助她进行演出前的准备。注意，一旦灵感满溢，演出将势在必行……！"
 author = "embrace"
-version = "1.31" -- This is the version of the template. Change it to your own number.
+version = "1.323" -- This is the version of the template. Change it to your own number.
 
 -- This is the URL name of the mod's thread on the forum; the part after the ? and before the first & in the url
 forumthread = ""

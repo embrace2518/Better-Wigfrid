@@ -19,10 +19,10 @@ local function SpawnShadowHands(inst)
 end
 
 -- 动作定义
-ACTIONS.OPENSHOW = Action({ priority=2, mount_valid=true })
-ACTIONS.OPENSHOW.str = "开幕"
-ACTIONS.OPENSHOW.id = "OPENSHOW"
-ACTIONS.OPENSHOW.fn = function(act)
+local OPENSHOW = Action({ priority=2, mount_valid=false })
+OPENSHOW.str = "开幕"
+OPENSHOW.id = "OPENSHOW"
+OPENSHOW.fn = function(act)
     local doer = act.doer
     if doer:HasTag("wathgrithr_show") then
         doer.components.talker:Say("演出正在进行！")
@@ -36,8 +36,10 @@ ACTIONS.OPENSHOW.fn = function(act)
     doer._showlight.entity:SetParent(doer.entity)
     doer._show_start_time = GetTime()
     doer.components.eater:SetDiet({FOODGROUP.OMNI}, {FOODTYPE.MEAT, FOODTYPE.GOODIES})
-    doer.components.combat.damagemultiplier = 1 + 0.1 * #doer.components.singinginspiration.active_songs
-    doer.components.health:SetAbsorptionAmount(1 - 0.1 * #doer.components.singinginspiration.active_songs)
+    local mult = #doer.components.singinginspiration.active_songs
+    doer.components.locomotor:SetExternalSpeedMultiplier(doer, "wathgrithr_show", 1 + 0.1 * mult)
+    doer.components.combat.damagemultiplier = 1 + 0.1 * mult
+    doer.components.health:SetAbsorptionAmount(0.1 * mult)
     doer.SoundEmitter:PlaySound("stageplay_set/statue_lyre/stinger_intro_act1")
     if act.invobject ~= nil then
         act.invobject.components.rechargeable:Discharge(SHOW_COOLDOWN)
@@ -48,10 +50,10 @@ ACTIONS.OPENSHOW.fn = function(act)
     return true
 end
 
-ACTIONS.CLOSESHOW = Action({ priority=3, mount_valid=true })
-ACTIONS.CLOSESHOW.str = "谢幕"
-ACTIONS.CLOSESHOW.id = "CLOSESHOW"
-ACTIONS.CLOSESHOW.fn = function(act)
+local CLOSESHOW = Action({ priority=3, mount_valid=false })
+CLOSESHOW.id = "CLOSESHOW"
+CLOSESHOW.str = "谢幕"
+CLOSESHOW.fn = function(act)
     local doer = act.doer
     if not doer:HasTag("wathgrithr_show") then
         doer.components.talker:Say("演出已经结束！")
@@ -64,8 +66,9 @@ ACTIONS.CLOSESHOW.fn = function(act)
     end
     doer._show_start_time = nil
     doer.components.eater:SetDiet({ FOODGROUP.OMNI })
+    doer.components.locomotor:RemoveExternalSpeedMultiplier(doer, "wathgrithr_show")
     doer.components.combat.damagemultiplier = 1
-    doer.components.health:SetAbsorptionAmount(1)
+    doer.components.health:SetAbsorptionAmount(0)
     doer.SoundEmitter:PlaySound("stageplay_set/statue_lyre/stinger_outro")
     if act.invobject ~= nil then
         act.invobject.components.rechargeable:Discharge(SHOW_COOLDOWN)
@@ -76,8 +79,8 @@ ACTIONS.CLOSESHOW.fn = function(act)
     return true
 end
 
-AddAction(ACTIONS.OPENSHOW)
-AddAction(ACTIONS.CLOSESHOW)
+AddAction(OPENSHOW)
+AddAction(CLOSESHOW)
 
 -- stategraph 状态
 local function AddShowState(stategraph, state_name, anim_pre, anim_main)

@@ -1,5 +1,4 @@
 -- 动作：独唱（WATHGRITHR_SING）
--- 动画流程：屈膝礼 → 演唱准备 → 演唱(6秒循环) → 演唱收尾 → 鞠躬 → idle
 -- 效果：演唱期间雇佣附近的猪人/鱼人、照料作物，并根据数量提供灵感值
 
 local ONEOF_TAGS = { "pig", "merm", "farm_plant" }
@@ -70,7 +69,7 @@ local function SetHireTime(inst)
     end
 end
 
-local WATHGRITHR_SING = Action({ priority=2 })
+local WATHGRITHR_SING = Action({ priority=2, mount_valid=false })
 WATHGRITHR_SING.id = "WATHGRITHR_SING"
 WATHGRITHR_SING.str = "独唱"
 WATHGRITHR_SING.fn = function(act)

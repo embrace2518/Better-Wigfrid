@@ -26,21 +26,20 @@ local function IsOwnerNotPerforming(inst)
     return owner ~= nil and not owner:HasTag("wathgrithr_show")
 end
 
-local function OnLeaderAttacked(inst, data)
-    if data ~= nil and data.attacker ~= nil
-        and IsOwnerNotPerforming(inst)
-        and inst.components.combat:CanTarget(data.attacker) then
-        inst.components.combat:SuggestTarget(data.attacker)
-    end
-end
-
 local function OnLeaderChanged(inst, data)
-    if data.old ~= nil and data.old:IsValid() then
-        inst:RemoveEventCallback("attacked", OnLeaderAttacked, data.old)
+    if data.old ~= nil and data.old:IsValid() and inst._on_leader_attacked ~= nil then
+        inst:RemoveEventCallback("attacked", inst._on_leader_attacked, data.old)
     end
 
     if data.new ~= nil then
-        inst:ListenForEvent("attacked", OnLeaderAttacked, data.new)
+        inst._on_leader_attacked = function(leader, attacked_data)
+            if attacked_data ~= nil and attacked_data.attacker ~= nil
+                and IsOwnerNotPerforming(inst)
+                and inst.components.combat:CanTarget(attacked_data.attacker) then
+                inst.components.combat:SuggestTarget(attacked_data.attacker)
+            end
+        end
+        inst:ListenForEvent("attacked", inst._on_leader_attacked, data.new)
         inst:PushEvent("standup")
     end
 end

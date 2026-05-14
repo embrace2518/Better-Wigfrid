@@ -85,14 +85,11 @@ AddPrefabPostInit("charlie_stage_post", function(inst)
 
     inst:ListenForEvent("play_performed", function(inst, data)
         local cast = inst.components.stageactingprop.cast
-        print("[BetterWigfrid] play_performed fired, cast:", cast ~= nil)
         if cast then
             for _, role_data in pairs(cast) do
-                print("[BetterWigfrid] cast member:", role_data.castmember ~= nil and role_data.castmember.prefab or "nil")
                 if role_data.castmember
                     and role_data.castmember.prefab == "wathgrithr" then
                     inst._wathgrithr_performed = true
-                    print("[BetterWigfrid] _wathgrithr_performed set to TRUE")
                     if inst._clear_wathgrithr_task then
                         inst._clear_wathgrithr_task:Cancel()
                     end
@@ -117,7 +114,6 @@ AddPrefabPostInit("hedgehound", function(inst)
             for _, stage in ipairs(stages) do
                 if stage._wathgrithr_performed then
                     inst._wathgrithr_bonus = true
-                    print("[BetterWigfrid] _wathgrithr_bonus set to TRUE")
                     break
                 end
             end

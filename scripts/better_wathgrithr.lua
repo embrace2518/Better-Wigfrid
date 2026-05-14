@@ -18,16 +18,24 @@ end
 
 local function GetPointSpecialActions(inst, pos, useitem, right)
     if right and useitem == nil then
-        local canblink
-        if inst.checkingmapactions then
-            canblink = inst:CanBlinkFromWithMap(inst.checkingmapactions_pos or inst:GetPosition())
-        else
-            canblink = inst:CanBlinkTo(pos)
-        end
         local hand_item = inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
-        if not inst:HasTag("wathgrithr_show") and hand_item ~= nil and hand_item.prefab == "playbill_the_doll" or
-        canblink and inst:HasTag("wathgrithr_show") and hand_item ~= nil and hand_item:HasTag("attackmode_leap") then
-            return { ACTIONS.WATHGRITHR_LIGHTNING }
+        if hand_item ~= nil then
+            if hand_item.prefab == "playbill_the_doll" then
+                return { ACTIONS.WATHGRITHR_LIGHTNING }
+            end
+            if inst:HasTag("wathgrithr_show") and inst.components.skilltreeupdater:IsActivated("wathgrithr_arsenal_spear_5") and
+            hand_item:HasTag("attackmode_leap") and
+            hand_item.components.rechargeable and hand_item.components.rechargeable:IsCharged() then
+                local canblink
+                if inst.checkingmapactions then
+                    canblink = inst:CanBlinkFromWithMap(inst.checkingmapactions_pos or inst:GetPosition())
+                else
+                    canblink = inst:CanBlinkTo(pos)
+                end
+                if canblink then
+                    return { ACTIONS.WATHGRITHR_LIGHTNING }
+                end
+            end
         end
     end
     return {}
@@ -55,14 +63,17 @@ AddPrefabPostInit("wathgrithr", function(inst)
 
     inst.components.eater:SetDiet({ FOODGROUP.OMNI })
     inst.components.combat.damagemultiplier = 1
-    inst.components.health:SetAbsorptionAmount(1)
+    inst.components.health:SetAbsorptionAmount(0)
 
-    if inst.components.leader == nil then
-        inst:AddComponent("leader")
-    end
-
+    inst:ListenForEvent("onattackother", function(inst, data)
+        if not inst:HasTag("wathgrithr_show") then return end
+        local equip = inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
+        if equip and equip.components.multithruster then
+            equip.components.multithruster:OnAttack()
+        end
+    end)
+    inst:AddComponent("leader")
     inst:AddComponent("rechargeable")
-
     inst:AddComponent("leaderrollcall")
     inst.components.leaderrollcall:SetRadius(TUNING.ONEMANBAND_RANGE)
     inst.components.leaderrollcall:SetMaxFollowers(TUNING.WATHGRITHR_SING_MAX_FOLLOWERS)
@@ -128,6 +139,30 @@ end)
 AddComponentPostInit("singinginspiration", function(self)
     self.OnHitOther = function() end
     self.OnAttacked = function() end
+
+    function self:CanAddSong(songdata, inst)
+
+        if songdata.REQUIRE_SKILL ~= nil and not self.inst.components.skilltreeupdater:IsActivated(songdata.REQUIRE_SKILL) then
+            return false
+        end
+
+        if songdata.INSTANT and self.inst:HasTag("wathgrithr_show") then
+            return self.current >= songdata.DELTA and (
+                inst == nil or inst.components.rechargeable == nil or inst.components.rechargeable:IsCharged()
+            )
+        end
+
+        return #self.active_songs < self.available_slots and not self.inst:HasTag("wathgrithr_show")
+    end
+
+    function self:OnAddInstantSong(songdata, inst)
+    if inst ~= nil and inst.components.rechargeable ~= nil then
+        inst.components.rechargeable:Discharge(songdata.COOLDOWN or TUNING.SKILLS.WATHGRITHR.BATTLESONG_INSTANT_COOLDOWN)
+    end
+
+    self:InstantInspire(songdata)
+end
+
     function self:DoDelta(delta, forceupdate)
         self.current = math.min(math.max(self.current + delta, 0), self.max)
 
@@ -141,8 +176,6 @@ AddComponentPostInit("singinginspiration", function(self)
         if self.available_slots ~= old_slots_available then
             for i = #self.active_songs, self.available_slots + 1, -1 do
                 self:PopSong()
-                self.inst.components.combat.damagemultiplier = 1 + 0.1 * #self.active_songs
-                self.inst.components.health:SetAbsorptionAmount(1 - 0.1 * #self.active_songs)
             end
         end
     end
@@ -171,11 +204,9 @@ AddComponentPostInit("singinginspiration", function(self)
 end)
 
 AddPrefabPostInit("playbill_the_doll", function(inst)
-    if inst.components.equippable == nil then
-        inst:AddComponent("equippable")
-        inst.components.equippable.equipslot = EQUIPSLOTS.HANDS
-        inst.components.equippable.restrictedtag = "battlesinger"
-    end
+    inst:AddComponent("equippable")
+    inst.components.equippable.equipslot = EQUIPSLOTS.HANDS
+    inst.components.equippable.restrictedtag = "battlesinger"
     inst:AddComponent("rechargeable")
 end)
 
@@ -207,39 +238,43 @@ AddStategraphPostInit("stageusher", function(sg)
 end)
 
 -- 奔雷矛切换攻击模式
-ACTIONS.SWITCH_ATTACK_MODE = Action({ priority=2, mount_valid=true })
-ACTIONS.SWITCH_ATTACK_MODE.id = "SWITCH_ATTACK_MODE"
-ACTIONS.SWITCH_ATTACK_MODE.strfn = function(act)
-    local mode = act.invobject and act.invobject._attack_mode or 1
-    return ({"切换：连击", "切换：跃击", "切换：冲刺"})[mode]
-end
-ACTIONS.SWITCH_ATTACK_MODE.fn = function(act)
-    local weapon = act.invobject
-    local doer = act.doer
-    if weapon == nil then return false end
-    local names = {"连击", "跃击", "冲刺"}
-    weapon._attack_mode = (weapon._attack_mode or 1) % 3 + 1
-    weapon:RemoveTag("attackmode_leap")
-    weapon:RemoveTag("attackmode_lunge")
-    if weapon._attack_mode == 2 then
-        weapon:AddTag("attackmode_leap")
-    elseif weapon._attack_mode == 3 then
-        weapon:AddTag("attackmode_lunge")
-    end
-    doer.components.talker:Say(names[weapon._attack_mode])
-    if weapon.UpdateAoeTargeting then weapon:UpdateAoeTargeting() end
-    weapon.components.rechargeable:Discharge(weapon._cooldown)
-    return true
-end
+local SWITCH_ATTACK_MODE = Action({ priority=2, mount_valid=true })
+SWITCH_ATTACK_MODE.id = "SWITCH_ATTACK_MODE"
+	SWITCH_ATTACK_MODE.strfn = function(act)
+	    if act.invobject and act.invobject:HasTag("attackmode_leap") then
+	        return "LEAP"
+	    elseif act.invobject and act.invobject:HasTag("attackmode_lunge") then
+	        return "LUNGE"
+	    end
+	    return "MULTITHRUST"
+	end
+	SWITCH_ATTACK_MODE.fn = function(act)
+	    local weapon = act.invobject
+	    if weapon == nil then return false end
+	    if weapon:HasTag("attackmode_leap") then
+	        weapon:RemoveTag("attackmode_leap")
+	        weapon:AddTag("attackmode_lunge")
+	    elseif weapon:HasTag("attackmode_lunge") then
+	        weapon:RemoveTag("attackmode_lunge")
+	    else
+	        weapon:AddTag("attackmode_leap")
+	    end
+	    if weapon.UpdateAoeTargeting then weapon:UpdateAoeTargeting() end
+	    weapon.components.rechargeable:Discharge(weapon._cooldown)
+	    return true
+	end
 
-AddAction(ACTIONS.SWITCH_ATTACK_MODE)
+AddAction(SWITCH_ATTACK_MODE)
+
+AddStategraphActionHandler("wilson", GLOBAL.ActionHandler(ACTIONS.SWITCH_ATTACK_MODE, "doshortaction"))
+AddStategraphActionHandler("wilson_client", GLOBAL.ActionHandler(ACTIONS.SWITCH_ATTACK_MODE, "doshortaction"))
 
 AddComponentAction("INVENTORY", "equippable", function(inst, doer, actions)
     if doer.prefab == "wathgrithr" and inst.components.equippable:IsEquipped() and
     inst.components.rechargeable ~= nil and inst.components.rechargeable:IsCharged() then
         if inst.prefab == "playbill_the_doll"  then
             table.insert(actions, doer:HasTag("wathgrithr_show") and ACTIONS.CLOSESHOW or ACTIONS.OPENSHOW)
-        elseif inst:HasTag("aoeweapon_lunge") then
+        elseif inst:HasTag("aoeweapon_lunge") and doer:HasTag("wathgrithr_show") then
             table.insert(actions, ACTIONS.SWITCH_ATTACK_MODE)
         end
     end
@@ -260,8 +295,8 @@ end
 AddStategraphPostInit('wilson', function(sg)
     local _old_attack_onenter = sg.states['attack'].onenter
     sg.states['attack'].onenter = function(inst)
-        if inst.prefab == "wathgrithr" then
-            local equip = inst.components.inventory:GetEquippedItem(_G.EQUIPSLOTS.HANDS)
+        if inst:HasTag("wathgrithr_show") then
+            local equip = inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
             if inst.components.rider and inst.components.rider:IsRiding() and
                 inst.components.rider:GetSaddle().prefab == "saddle_wathgrithr" and
                 inst.components.skilltreeupdater:IsActivated("wathgrithr_beefalo_saddle") and
@@ -270,9 +305,6 @@ AddStategraphPostInit('wilson', function(sg)
                 _old_attack_onenter(inst)
             else
                 _old_attack_onenter(inst)
-            end
-            if equip and equip.components.multithruster then
-                equip.components.multithruster:OnAttack()
             end
         else
             _old_attack_onenter(inst)
@@ -331,6 +363,8 @@ end)
 AddComponentPostInit("battleborn", function(self)
 
     function self:OnAttack(data)
+        if not self.inst:HasTag("wathgrithr_show") then return end
+
         local victim = data.target
         local delta = 0
 
@@ -379,5 +413,3 @@ AddComponentPostInit("battleborn", function(self)
         end
     end
 end)
-
-

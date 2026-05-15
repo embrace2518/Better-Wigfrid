@@ -2,7 +2,7 @@
 local WATHGRITHR_LIGHTNING = Action({ priority=2, rmb=true, distance=36, mount_valid=true, encumbered_valid=true })
 WATHGRITHR_LIGHTNING.id = "WATHGRITHR_LIGHTNING"
 WATHGRITHR_LIGHTNING.strfn = function(act)
-    if act.doer:HasTag("wathgrithr_show") then
+    if act.doer.components.showmode:IsActive() then
         return "LEAP"
     end
     return "LIGHTNING"
@@ -33,7 +33,7 @@ WATHGRITHR_LIGHTNING.fn = function(act)
         pos = Vector3(pos.x, 0, pos.z)
     end
     local hand_item = doer.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
-    if not doer:HasTag("wathgrithr_show") and doer.components.singinginspiration:GetPercent() > 0.2 then
+    if not doer.components.showmode:IsActive() and doer.components.singinginspiration:GetPercent() > 0.2 then
         doer.components.singinginspiration:DoDelta(-20)
 
         local x, y, z = pos.x, pos.y, pos.z

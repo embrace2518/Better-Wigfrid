@@ -2,6 +2,13 @@ local function HasSpearSkill(owner, skill)
     return owner and owner.components.skilltreeupdater and owner.components.skilltreeupdater:IsActivated(skill)
 end
 
+local function CanCombo(owner, weapon)
+    return owner.components.showmode and owner.components.showmode:IsActive()
+        and HasSpearSkill(owner, "wathgrithr_arsenal_spear_1")
+        and not (weapon:HasTag("attackmode_leap") or weapon:HasTag("attackmode_lunge"))
+        and (not (owner.components.rider and owner.components.rider:IsRiding()) or HasSpearSkill(owner, "wathgrithr_beefalo_saddle"))
+end
+
 local Multithruster = Class(function(self, inst)
     self.inst = inst
 
@@ -10,9 +17,7 @@ local Multithruster = Class(function(self, inst)
         inst.components.rechargeable:SetOnChargedFn(function(inst)
             if old_oncharged then old_oncharged(inst) end
             local owner = self.inst.components.inventoryitem and self.inst.components.inventoryitem:GetGrandOwner()
-            if owner:HasTag("wathgrithr_show") and HasSpearSkill(owner, "wathgrithr_arsenal_spear_1") and
-            not (inst:HasTag("attackmode_leap") or inst:HasTag("attackmode_lunge")) and
-            (not (owner.components.rider and owner.components.rider:IsRiding()) or HasSpearSkill(owner, "wathgrithr_beefalo_saddle")) then
+            if owner and CanCombo(owner, self.inst) then
                 self.inst:AddTag("multithruster")
             end
         end)
@@ -24,17 +29,6 @@ local Multithruster = Class(function(self, inst)
         end)
     end
 end)
-
-function Multithruster:OnAttack()
-    if self.inst.components.rechargeable and not self.inst.components.rechargeable:IsCharged() then
-        local remaining = self.inst.components.rechargeable:GetTimeToCharge()
-        if remaining > 1 then
-            self.inst.components.rechargeable:Discharge(remaining - 1)
-        else
-            self.inst.components.rechargeable:SetPercent(1)
-        end
-    end
-end
 
 function Multithruster:StartThrusting(player)
     self._thrust_repair_count = 0

@@ -23,7 +23,7 @@ end
 -- Owner exists and is NOT performing; enables combat
 local function IsOwnerNotPerforming(inst)
     local owner = GetOwner(inst)
-    return owner ~= nil and not owner:HasTag("wathgrithr_show")
+    return owner ~= nil and owner.components.showmode ~= nil and not owner.components.showmode:IsActive()
 end
 
 local function OnLeaderChanged(inst, data)

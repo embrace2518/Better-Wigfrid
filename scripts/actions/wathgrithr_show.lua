@@ -2,51 +2,22 @@
 
 local SHOW_COOLDOWN = TUNING.TOTAL_DAY_TIME * 0.5 -- 4 minutes
 
-local function SpawnShadowHands(inst)
-    local x, y, z = inst.Transform:GetWorldPosition()
-    local num_hands = 4
-    for i = 1, num_hands do
-        local angle = (i - 1) * (TWOPI / num_hands)
-        local radius = 1.5
-        local hx = x + math.cos(angle) * radius
-        local hz = z + math.sin(angle) * radius
-        local hy = y + 2.5 + math.random() * 1.5
-        local fx = SpawnPrefab("shadowhand_fx")
-        if fx ~= nil then
-            fx.Transform:SetPosition(hx, hy, hz)
-        end
-    end
-end
-
 -- 动作定义
 local OPENSHOW = Action({ priority=2, mount_valid=false })
 OPENSHOW.str = "开幕"
 OPENSHOW.id = "OPENSHOW"
 OPENSHOW.fn = function(act)
     local doer = act.doer
-    if doer:HasTag("wathgrithr_show") then
+    if doer.components.showmode:IsActive() then
         doer.components.talker:Say("演出正在进行！")
     elseif #doer.components.singinginspiration.active_songs < 2 then
         doer.components.talker:Say("至少有两首歌曲作为开场白")
     end
     doer.components.talker:Say("演出正式开始！")
-    doer:AddTag("wathgrithr_show")
-    if doer._showlight ~= nil then doer._showlight:Remove() end
-    doer._showlight = SpawnPrefab("booklight", nil, 0)
-    doer._showlight.entity:SetParent(doer.entity)
-    doer._show_start_time = GetTime()
-    doer.components.eater:SetDiet({FOODGROUP.OMNI}, {FOODTYPE.MEAT, FOODTYPE.GOODIES})
-    local mult = #doer.components.singinginspiration.active_songs
-    doer.components.locomotor:SetExternalSpeedMultiplier(doer, "wathgrithr_show", 1 + 0.1 * mult)
-    doer.components.combat.damagemultiplier = 1 + 0.1 * mult
-    doer.components.health:SetAbsorptionAmount(0.1 * mult)
-    doer.SoundEmitter:PlaySound("stageplay_set/statue_lyre/stinger_intro_act1")
+    doer.components.showmode:Enter(#doer.components.singinginspiration.active_songs)
     if act.invobject ~= nil then
         act.invobject.components.rechargeable:Discharge(SHOW_COOLDOWN)
     end
-    SpawnShadowHands(doer)
-    local fx = SpawnPrefab("marionette_appear_fx")
-    if fx ~= nil then fx.Transform:SetPosition(doer.Transform:GetWorldPosition()) end
     return true
 end
 
@@ -55,27 +26,14 @@ CLOSESHOW.id = "CLOSESHOW"
 CLOSESHOW.str = "谢幕"
 CLOSESHOW.fn = function(act)
     local doer = act.doer
-    if not doer:HasTag("wathgrithr_show") then
+    if not doer.components.showmode:IsActive() then
         doer.components.talker:Say("演出已经结束！")
     end
     doer.components.talker:Say("演出到此为止！")
-    doer:RemoveTag("wathgrithr_show")
-    if doer._showlight ~= nil then
-        doer._showlight:Remove()
-        doer._showlight = nil
-    end
-    doer._show_start_time = nil
-    doer.components.eater:SetDiet({ FOODGROUP.OMNI })
-    doer.components.locomotor:RemoveExternalSpeedMultiplier(doer, "wathgrithr_show")
-    doer.components.combat.damagemultiplier = 1
-    doer.components.health:SetAbsorptionAmount(0)
-    doer.SoundEmitter:PlaySound("stageplay_set/statue_lyre/stinger_outro")
+    doer.components.showmode:Exit()
     if act.invobject ~= nil then
         act.invobject.components.rechargeable:Discharge(SHOW_COOLDOWN)
     end
-    SpawnShadowHands(doer)
-    local fx = SpawnPrefab("marionette_disappear_fx")
-    if fx ~= nil then fx.Transform:SetPosition(doer.Transform:GetWorldPosition()) end
     return true
 end
 

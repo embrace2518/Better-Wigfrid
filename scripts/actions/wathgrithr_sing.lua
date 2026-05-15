@@ -153,7 +153,7 @@ AddStategraphActionHandler("wilson", GLOBAL.ActionHandler(WATHGRITHR_SING, "wath
 AddStategraphActionHandler("wilson_client", GLOBAL.ActionHandler(WATHGRITHR_SING, "wathgrithr_sing"))
 
 AddComponentAction("SCENE", "singinginspiration", function(inst, doer, actions)
-    if not doer:HasTag("wathgrithr_show")
+    if not doer.components.showmode:IsActive()
         and doer.components.rechargeable ~= nil
         and doer.components.rechargeable:IsCharged() then
         table.insert(actions, ACTIONS.WATHGRITHR_SING)

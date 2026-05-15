@@ -1,12 +1,7 @@
 -- 动作：落雷
 local WATHGRITHR_LIGHTNING = Action({ priority=2, rmb=true, distance=36, mount_valid=true, encumbered_valid=true })
 WATHGRITHR_LIGHTNING.id = "WATHGRITHR_LIGHTNING"
-WATHGRITHR_LIGHTNING.strfn = function(act)
-    if act.doer.components.showmode:IsActive() then
-        return "LEAP"
-    end
-    return "LIGHTNING"
-end
+WATHGRITHR_LIGHTNING.str = "落雷"
 
 function PickSome(num, choices)
 	local l_choices = choices

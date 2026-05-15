@@ -1,14 +1,7 @@
 -- 奔雷矛切换攻击模式
 local SWITCH_ATTACK_MODE = Action({ priority=2, mount_valid=true })
 SWITCH_ATTACK_MODE.id = "SWITCH_ATTACK_MODE"
-	SWITCH_ATTACK_MODE.strfn = function(act)
-	    if act.invobject and act.invobject:HasTag("attackmode_leap") then
-	        return "LEAP"
-	    elseif act.invobject and act.invobject:HasTag("attackmode_lunge") then
-	        return "LUNGE"
-	    end
-	    return "MULTITHRUST"
-	end
+	SWITCH_ATTACK_MODE.str = "切换"
 	SWITCH_ATTACK_MODE.fn = function(act)
 	    local weapon = act.invobject
 	    if weapon == nil then return false end

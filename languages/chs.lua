@@ -11,6 +11,10 @@ STRINGS.ACTIONS.WATHGRITHR_LIGHTNING = {
     LIGHTNING = "落雷",
 }
 
+STRINGS.ACTIONS.WATHGRITHR_SING = setmetatable({}, {
+    __index = function(_, k) return k end
+})
+
 -- 技能树
 STRINGS.SKILLTREE.WATHGRITHR_ARSENAL_SPEAR_1_TITLE = "长矛I"
 STRINGS.SKILLTREE.WATHGRITHR_ARSENAL_SPEAR_1_DESC  = "在歌声加持下，女武神使用战斗长矛可以打出连击。"

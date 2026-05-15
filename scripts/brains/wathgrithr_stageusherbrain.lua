@@ -3,7 +3,7 @@ require "behaviours/faceentity"
 require "behaviours/leash"
 require "behaviours/chaseandattack"
 
-local MIN_FOLLOW = 6
+local MIN_FOLLOW = 0
 local TARGET_FOLLOW = 9
 local MAX_FOLLOW = 12
 local LEASH_RETURN_DIST = 10

@@ -12,10 +12,6 @@ local function CanBlinkFromWithMap(inst, pt)
     return IsTeleportingPermittedFromPointToPoint(x, y, z, pt.x, pt.y, pt.z)
 end
 
-local function ReticuleTargetFn(inst)
-    return ControllerReticle_Blink_GetPosition(inst, IsNotBlocked)
-end
-
 local function GetPointSpecialActions(inst, pos, useitem, right)
     if right and useitem == nil then
         local hand_item = inst.replica.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
@@ -52,13 +48,6 @@ AddPrefabPostInit("wathgrithr", function(inst)
     inst.CanBlinkFromWithMap = CanBlinkFromWithMap
     inst:ListenForEvent("setowner", OnSetOwner)
 
-    inst:AddComponent("reticule")
-    inst.components.reticule.targetfn = ReticuleTargetFn
-    inst.components.reticule.ease = true
-	inst.components.reticule.twinstickcheckscheme = true
-	inst.components.reticule.twinstickmode = 1
-	inst.components.reticule.twinstickrange = 15
-
     if not TheWorld.ismastersim then return inst end
 
     inst.components.eater:SetDiet({ FOODGROUP.OMNI })
@@ -67,7 +56,6 @@ AddPrefabPostInit("wathgrithr", function(inst)
 
     inst:AddComponent("showmode")
 
-    inst:AddComponent("leader")
     inst:AddComponent("rechargeable")
     inst:AddComponent("leaderrollcall")
     inst.components.leaderrollcall:SetRadius(TUNING.ONEMANBAND_RANGE)

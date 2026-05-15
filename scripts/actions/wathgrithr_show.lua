@@ -12,6 +12,7 @@ OPENSHOW.fn = function(act)
         doer.components.talker:Say("演出正在进行！")
     elseif #doer.components.singinginspiration.active_songs < 2 then
         doer.components.talker:Say("至少有两首歌曲作为开场白")
+        return false
     end
     doer.components.talker:Say("演出正式开始！")
     doer.components.showmode:Enter(#doer.components.singinginspiration.active_songs)

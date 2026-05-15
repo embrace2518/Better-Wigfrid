@@ -2,6 +2,15 @@
 AddPrefabPostInit("beefalo", function(inst)
     if not TheWorld.ismastersim then return inst end
 
+    -- 独唱安抚：被歌声安抚时不主动攻击
+    local old_shouldaggro = inst.components.combat.shouldaggrofn
+    inst.components.combat:SetShouldAggroFn(function(inst, target)
+        if inst:HasTag("wathgrithr_pacified") then
+            return false
+        end
+        return old_shouldaggro ~= nil and old_shouldaggro(inst, target) or nil
+    end)
+
     local oldfn = inst.components.combat.GetAttacked
     function inst.components.combat:GetAttacked(attacker, damage, weapon, stimuli, spdamage)
         local rider = inst.components.rideable:GetRider()

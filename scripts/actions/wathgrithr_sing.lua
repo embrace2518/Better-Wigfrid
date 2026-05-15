@@ -1,144 +1,169 @@
--- 动作：独唱（WATHGRITHR_SING）
--- 效果：演唱期间雇佣附近的猪人/鱼人、照料作物，并根据数量提供灵感值
+-- 动作：独唱
+local HIRE_TAGS = { "pig", "merm" }
+local CANT_TAGS = { "werepig", "player", "INLIMBO", "NOCLICK" }
 
-local ONEOF_TAGS = { "pig", "merm", "farm_plant" }
-local CANT_TAGS = { "werepig", "player" }
+local function OnSingVerse(inst)
+    if not inst:HasTag("wathgrithr_singing") then return end
 
-local function CountNearbyCrops(inst)
+    inst.SoundEmitter:PlaySound("dontstarve/music/gramophone", nil, 0.5)
+
     local x, y, z = inst.Transform:GetWorldPosition()
-    local count = 0
-    for _, v in ipairs(TheSim:FindEntities(x, y, z, TUNING.ONEMANBAND_RANGE, nil, CANT_TAGS, ONEOF_TAGS)) do
-        if v.components.farmplanttendable ~= nil then
-            count = count + 1
+    local ents = TheSim:FindEntities(x, y, z, TUNING.WATHGRITHR_SING_RANGE, nil, CANT_TAGS)
+
+    for _, ent in ipairs(ents) do
+        if ent:HasAnyTag(HIRE_TAGS) and ent.components.follower ~= nil then
+            if not inst.components.leader:IsFollower(ent)
+                and inst.components.leader:CountFollowers() < TUNING.WATHGRITHR_SING_MAX_FOLLOWERS then
+                inst.components.leader:AddFollower(ent)
+            end
+            if inst.components.leader:IsFollower(ent) then
+                ent.components.follower:AddLoyaltyTime(TUNING.WATHGRITHR_SING_HIRE_TIME)
+            end
         end
-    end
-    return count
-end
-
-local function EnsureDailyReset(inst)
-    local day = GLOBAL.TheWorld.state.cycles
-    if inst._sing_daily_day ~= day then
-        inst._sing_daily_day = day
-        inst._sing_daily_hire = 0
-        inst._sing_daily_crop = 0
-    end
-end
-
-local function OnSingRollCall(inst)
-    if inst.sg.statemem.phase ~= 3 then return end
-    local now = GLOBAL.GetTime()
-    if inst._sing_inspire_cooldown ~= nil and now < inst._sing_inspire_cooldown then
-        inst._sing_prev_followers = inst.components.leader:GetNumFollowers()
-        return
-    end
-
-    EnsureDailyReset(inst)
-
-    local prev_followers = inst._sing_prev_followers or 0
-    local curr_followers = inst.components.leader:GetNumFollowers()
-    inst._sing_prev_followers = curr_followers
-    local hire_delta = curr_followers - prev_followers
-    local crop_count = CountNearbyCrops(inst)
-
-    -- 分别计算生物和作物灵感，受每日上限约束
-    local hire_inspire = math.min(hire_delta * TUNING.WATHGRITHR_SING_INSPIRE_PER_HIRE, TUNING.WATHGRITHR_SING_DAILY_HIRE_MAX - inst._sing_daily_hire)
-    local crop_inspire = math.min(crop_count * TUNING.WATHGRITHR_SING_INSPIRE_PER_CROP, TUNING.WATHGRITHR_SING_DAILY_CROP_MAX - inst._sing_daily_crop)
-    local total = math.max(hire_inspire, 0) + math.max(crop_inspire, 0)
-
-    if hire_delta > 0 then
-        inst.components.talker:Say(GetString(inst, "ANNOUNCE_SING_HIRE"))
-    end
-    if crop_count > 0 then
-        inst.components.talker:Say(GetString(inst, "ANNOUNCE_SING_CROP"))
-    end
-
-    if total > 0 and inst.components.singinginspiration ~= nil then
-        inst.components.singinginspiration:DoDelta(total)
-        inst._sing_daily_hire = inst._sing_daily_hire + math.max(hire_inspire, 0)
-        inst._sing_daily_crop = inst._sing_daily_crop + math.max(crop_inspire, 0)
-        inst._sing_inspire_cooldown = now + TUNING.WATHGRITHR_SING_INSPIRE_COOLDOWN
-    end
-end
-
-local function SetHireTime(inst)
-    if not GLOBAL.TheWorld.ismastersim then return end
-    for ent in pairs(inst.components.leader.followers) do
-        if ent:HasAnyTag(ONEOF_TAGS) and ent.components.follower ~= nil then
-            ent.components.follower:AddLoyaltyTime(TUNING.WATHGRITHR_SING_HIRE_TIME)
+        if ent.components.farmplanttendable ~= nil then
+            ent.components.farmplanttendable:TendTo(inst)
+        end
+        if ent:HasTag("rabbit") and ent.components.follower ~= nil then
+            if not inst.components.leader:IsFollower(ent)
+                and inst.components.leader:CountFollowers() < TUNING.WATHGRITHR_SING_MAX_FOLLOWERS then
+                inst.components.leader:AddFollower(ent)
+            end
+            if inst.components.leader:IsFollower(ent) then
+                ent.components.follower:AddLoyaltyTime(TUNING.WATHGRITHR_SING_HIRE_TIME)
+            end
+        end
+        if ent:HasTag("beefalo") and not (ent.components.health and ent.components.health:IsDead()) then
+            if ent.components.domesticatable ~= nil then
+                local day = TheWorld.state.cycles
+                if ent._sing_dom_day ~= day then
+                    ent._sing_dom_day = day
+                    ent._sing_dom_given = 0
+                end
+                local cap = TUNING.WATHGRITHR_SING_DOMESTICATION_CAP_PER_DAY
+                local per = TUNING.WATHGRITHR_SING_DOMESTICATION_PER_VERSE
+                local to_give = math.min(per, cap - (ent._sing_dom_given or 0))
+                if to_give > 0 then
+                    ent.components.domesticatable:DeltaDomestication(to_give, inst)
+                    ent.components.domesticatable:DeltaObedience(to_give)
+                    ent._sing_dom_given = (ent._sing_dom_given or 0) + to_give
+                end
+            end
+            if ent.components.combat ~= nil then
+                ent.components.combat:GiveUp()
+            end
+            if ent._wathgrithr_pacified_task ~= nil then
+                ent._wathgrithr_pacified_task:Cancel()
+            end
+            ent:AddTag("wathgrithr_pacified")
+            ent._wathgrithr_pacified_task = ent:DoTaskInTime(2.5, function(e)
+                e:RemoveTag("wathgrithr_pacified")
+                e._wathgrithr_pacified_task = nil
+            end)
         end
     end
 end
 
-local WATHGRITHR_SING = Action({ priority=2, mount_valid=false })
+local WATHGRITHR_SING = Action({ priority = 2, mount_valid = false })
 WATHGRITHR_SING.id = "WATHGRITHR_SING"
 WATHGRITHR_SING.str = "独唱"
 WATHGRITHR_SING.fn = function(act)
     local doer = act.doer
-    if doer.components.leaderrollcall ~= nil then
-        doer._sing_prev_followers = doer.components.leader:GetNumFollowers()
-        doer.components.leaderrollcall:SetOnRollCallFn(OnSingRollCall)
-        doer.components.leaderrollcall:Enable()
+    local now = GetTime()
+    if doer._sing_cooldown and now < doer._sing_cooldown then return false end
+    if doer.components.singinginspiration ~= nil then
+        if doer.components.singinginspiration.current < TUNING.WATHGRITHR_SING_VERSE_COST then
+            return false
+        end
+        doer.components.singinginspiration:DoDelta(-TUNING.WATHGRITHR_SING_VERSE_COST)
     end
-    if doer.components.rechargeable ~= nil then
-        doer.components.rechargeable:Discharge(60)
-    end
+    doer._sing_cooldown = now + TUNING.WATHGRITHR_SING_DURATION + TUNING.WATHGRITHR_SING_COOLDOWN
     return true
 end
 
 AddAction(WATHGRITHR_SING)
 
-local function AddWathgrithrSingState(stategraph)
-    stategraph.states["wathgrithr_sing"] = GLOBAL.State{
-        name = "wathgrithr_sing",
-        tags = {"doing", "busy", "nopredict"},
-
+local function AddSingStates(stategraph)
+    -- 屈膝礼 (参照 acting_curtsy)
+    stategraph.states["wathgrithr_sing_bow"] = State{
+        name = "wathgrithr_sing_bow",
+        tags = { "busy", "doing" },
         onenter = function(inst)
             inst.components.locomotor:Stop()
-            inst.sg.statemem.phase = 1
-            -- 1. 屈膝礼
             inst.AnimState:PlayAnimation("idle_wathgrithr")
         end,
-
-        ontimeout = function(inst)
-            -- 3. 演唱循环结束(6秒), 播放收尾
-            inst.sg.statemem.phase = 4
-            inst.AnimState:PlayAnimation("sing_loop_pst")
-            SetHireTime(inst)
-            if inst.components.leaderrollcall ~= nil then
-                inst.components.leaderrollcall:Disable()
-            end
-        end,
-
-        onexit = function(inst)
-            -- 安全关闭：状态意外退出时也停止
-            SetHireTime(inst)
-            if inst.components.leaderrollcall ~= nil then
-                inst.components.leaderrollcall:Disable()
-            end
-        end,
-
         events = {
-            GLOBAL.EventHandler("animover", function(inst)
-                local phase = inst.sg.statemem.phase
-                if phase == 1 then
-                    -- 1→2: 屈膝礼结束, 演唱准备
-                    inst.sg.statemem.phase = 2
-                    inst.AnimState:PlayAnimation("sing_loop_pre")
-                elseif phase == 2 then
-                    -- 2→3: 准备结束, 开始循环演唱(6秒)，PerformBufferedAction 开启雇佣/照料
-                    inst.sg.statemem.phase = 3
-                    inst.AnimState:PlayAnimation("sing_loop", true)
-                    inst.sg:SetTimeout(6)
-                    inst:PerformBufferedAction()
-                elseif phase == 4 then
-                    -- 4→5: 收尾结束, 鞠躬
-                    inst.sg.statemem.phase = 5
-                    inst.AnimState:PlayAnimation("bow_pre")
-                    inst.AnimState:PushAnimation("bow_pst", false)
-                end
+            EventHandler("animover", function(inst)
+                inst.sg:GoToState("wathgrithr_sing_pre")
             end),
-            GLOBAL.EventHandler("animqueueover", function(inst)
-                if inst.sg.statemem.phase == 5 then
+        },
+    }
+
+    -- 演唱准备
+    stategraph.states["wathgrithr_sing_pre"] = State{
+        name = "wathgrithr_sing_pre",
+        tags = { "busy", "doing" },
+        onenter = function(inst)
+            inst.AnimState:PlayAnimation("sing_loop_pre")
+        end,
+        events = {
+            EventHandler("animover", function(inst)
+                inst.sg:GoToState("wathgrithr_sing_loop")
+            end),
+        },
+    }
+
+    -- 4秒演唱循环 (参照 charlie_stage_post "narrate")
+    stategraph.states["wathgrithr_sing_loop"] = State{
+        name = "wathgrithr_sing_loop",
+        tags = { "busy", "doing" },
+        onenter = function(inst)
+            inst.AnimState:PlayAnimation("sing_loop", true)
+            inst.sg:SetTimeout(4)
+            inst:PerformBufferedAction()
+        end,
+        ontimeout = function(inst)
+            -- 启动回声 buff
+            inst:AddTag("wathgrithr_singing")
+            inst._sing_notes = SpawnPrefab("wathgrithr_sing_notes")
+            inst._sing_notes.entity:SetParent(inst.entity)
+            inst._sing_notes.Transform:SetPosition(0, 3, 0)
+            inst._sing_verse_task = inst:DoPeriodicTask(TUNING.WATHGRITHR_SING_VERSE_INTERVAL, OnSingVerse)
+            inst.SoundEmitter:PlaySound("dontstarve/music/gramophone", "singing_music")
+            inst.components.talker:Say("一展歌喉！")
+            -- 10秒后结束回声 + 退场
+            inst._sing_end_task = inst:DoTaskInTime(TUNING.WATHGRITHR_SING_DURATION, function(inst)
+                inst:RemoveTag("wathgrithr_singing")
+                inst.SoundEmitter:KillSound("singing_music")
+                if inst._sing_notes ~= nil then
+                    inst._sing_notes:Remove()
+                    inst._sing_notes = nil
+                end
+                if inst._sing_verse_task ~= nil then
+                    inst._sing_verse_task:Cancel()
+                    inst._sing_verse_task = nil
+                end
+                inst.components.talker:Say("余音绕梁！")
+                if inst.sg ~= nil then
+                    inst.sg:GoToState("wathgrithr_sing_pst")
+                end
+            end)
+            inst.sg:GoToState("idle")
+        end,
+    }
+
+    -- 退场 (参照 acting_bow: PlayAnimation + PushAnimation + animqueueover)
+    stategraph.states["wathgrithr_sing_pst"] = State{
+        name = "wathgrithr_sing_pst",
+        tags = { "busy", "doing" },
+        onenter = function(inst)
+            inst.components.locomotor:Stop()
+            inst.AnimState:PlayAnimation("sing_loop_pst")
+            inst.AnimState:PushAnimation("bow_pre", false)
+            inst.AnimState:PushAnimation("bow_pst", false)
+        end,
+        events = {
+            EventHandler("animqueueover", function(inst)
+                if inst.AnimState:AnimDone() then
                     inst.sg:GoToState("idle")
                 end
             end),
@@ -146,16 +171,17 @@ local function AddWathgrithrSingState(stategraph)
     }
 end
 
-AddStategraphPostInit("wilson", AddWathgrithrSingState)
-AddStategraphPostInit("wilson_client", AddWathgrithrSingState)
+AddStategraphPostInit("wilson", AddSingStates)
+AddStategraphPostInit("wilson_client", AddSingStates)
 
-AddStategraphActionHandler("wilson", GLOBAL.ActionHandler(WATHGRITHR_SING, "wathgrithr_sing"))
-AddStategraphActionHandler("wilson_client", GLOBAL.ActionHandler(WATHGRITHR_SING, "wathgrithr_sing"))
+AddStategraphActionHandler("wilson", ActionHandler(ACTIONS.WATHGRITHR_SING, "wathgrithr_sing_bow"))
+AddStategraphActionHandler("wilson_client", ActionHandler(ACTIONS.WATHGRITHR_SING, "wathgrithr_sing_bow"))
 
 AddComponentAction("SCENE", "singinginspiration", function(inst, doer, actions)
     if not doer.components.showmode:IsActive()
-        and doer.components.rechargeable ~= nil
-        and doer.components.rechargeable:IsCharged() then
+        and (doer._sing_cooldown == nil or GetTime() >= doer._sing_cooldown)
+        and doer.components.singinginspiration ~= nil
+        and doer.components.singinginspiration.current >= TUNING.WATHGRITHR_SING_VERSE_COST then
         table.insert(actions, ACTIONS.WATHGRITHR_SING)
     end
 end)

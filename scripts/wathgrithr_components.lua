@@ -1,6 +1,3 @@
--- 攻击阶段统一入口
--- 顺序: 1) 连击充能 → 2) 战斗回血
-
 -- 战歌系统重写
 AddComponentPostInit("singinginspiration", function(self)
     self.OnHitOther = function() end
@@ -55,12 +52,15 @@ end
             else
                 self:DoDelta(-(100 / TUNING.TOTAL_DAY_TIME) * dt)
             end
+        elseif self.inst:HasTag("wathgrithr_singing") then
+            self.is_draining = true
         else
             self.is_draining = false
             self:DoDelta((20 / TUNING.TOTAL_DAY_TIME) * dt)
         end
 
-        if self.current == self.max and not self.inst.components.showmode:IsActive() then
+        if self.current == self.max and not self.inst.components.showmode:IsActive()
+            and not self.inst:HasTag("wathgrithr_singing") then
             self.inst:PushBufferedAction(BufferedAction(self.inst, nil, ACTIONS.OPENSHOW))
         elseif self.current == 0 and self.inst.components.showmode:IsActive() then
             self.inst:PushBufferedAction(BufferedAction(self.inst, nil, ACTIONS.CLOSESHOW))
@@ -76,7 +76,7 @@ AddPrefabPostInit("playbill_the_doll", function(inst)
     inst:AddComponent("rechargeable")
 end)
 
--- 为战斗而生调整
+-- 为战斗而生调整：攻击吸血 + 武器充能加速（battleborn 收益）
 AddComponentPostInit("battleborn", function(self)
 
     function self:OnAttack(data)
@@ -128,6 +128,7 @@ AddComponentPostInit("battleborn", function(self)
             end
         end
 
+        -- 武器充能加速（battleborn 收益）
         local equip = self.inst.components.inventory:GetEquippedItem(EQUIPSLOTS.HANDS)
         if equip.components.rechargeable and not equip.components.rechargeable:IsCharged() then
             local remaining = equip.components.rechargeable:GetTimeToCharge()

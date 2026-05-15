@@ -44,21 +44,9 @@ local function OnSingVerse(inst)
                 local to_give = math.min(per, cap - (ent._sing_dom_given or 0))
                 if to_give > 0 then
                     ent.components.domesticatable:DeltaDomestication(to_give, inst)
-                    ent.components.domesticatable:DeltaObedience(to_give)
                     ent._sing_dom_given = (ent._sing_dom_given or 0) + to_give
                 end
             end
-            if ent.components.combat ~= nil then
-                ent.components.combat:GiveUp()
-            end
-            if ent._wathgrithr_pacified_task ~= nil then
-                ent._wathgrithr_pacified_task:Cancel()
-            end
-            ent:AddTag("wathgrithr_pacified")
-            ent._wathgrithr_pacified_task = ent:DoTaskInTime(2.5, function(e)
-                e:RemoveTag("wathgrithr_pacified")
-                e._wathgrithr_pacified_task = nil
-            end)
         end
     end
 end
@@ -112,13 +100,13 @@ local function AddSingStates(stategraph)
         },
     }
 
-    -- 4秒演唱循环 (参照 charlie_stage_post "narrate")
+    -- 2秒演唱循环 (参照 charlie_stage_post "narrate")
     stategraph.states["wathgrithr_sing_loop"] = State{
         name = "wathgrithr_sing_loop",
         tags = { "busy", "doing" },
         onenter = function(inst)
             inst.AnimState:PlayAnimation("sing_loop", true)
-            inst.sg:SetTimeout(4)
+            inst.sg:SetTimeout(2)
             inst:PerformBufferedAction()
         end,
         ontimeout = function(inst)

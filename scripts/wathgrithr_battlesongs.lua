@@ -54,10 +54,24 @@ AddPrefabPostInit("charlie_stage_post", function(inst)
                         inst._wathgrithr_performed = nil
                         inst._clear_wathgrithr_task = nil
                     end)
+                    -- 剧本进度追踪
+                    local wath = role_data.castmember
+                    if data and data.next then
+                        if data.next == "ACT2_SCENE4" and not wath:GetActDone("act1") then
+                            wath:SetActDone("act1")
+                        elseif data.next == "ACT3_SCENE7" and not wath:GetActDone("act2") then
+                            wath:SetActDone("act2")
+                        elseif data.next == "ACT1_SCENE1" and not wath:GetActDone("act3") then
+                            wath:SetActDone("act3")
+                        end
+                    end
                     break
                 end
             end
         end
+        -- 闭幕冷却（有剧本表演时也加冷却）
+        local cooldown = TUNING.CHARLIE_STAGE_RESET_TIME + math.random() * TUNING.CHARLIE_STAGE_RESET_TIME_VARIABLE
+        inst.components.stageactingprop:DisableProp(cooldown)
     end)
 end)
 

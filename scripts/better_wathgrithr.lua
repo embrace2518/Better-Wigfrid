@@ -56,13 +56,19 @@ AddPrefabPostInit("wathgrithr", function(inst)
 
     inst:AddComponent("showmode")
 
+    -- 剧本进度追踪
+    inst._wathgrithr_acts_done = {}
+    inst.GetActDone = function(inst, act) return inst._wathgrithr_acts_done ~= nil and inst._wathgrithr_acts_done[act] or false end
+    inst.SetActDone = function(inst, act) if inst._wathgrithr_acts_done ~= nil then inst._wathgrithr_acts_done[act] = true end end
+    inst.HasPlaybill = function(inst)
+        if inst.components.inventory then
+            local items = inst.components.inventory:FindItems(function(item) return item.prefab == "playbill_the_doll" end)
+            return items ~= nil and next(items) ~= nil
+        end
+        return false
+    end
+
     inst:AddComponent("rechargeable")
-    inst:AddComponent("leaderrollcall")
-    inst.components.leaderrollcall:SetRadius(TUNING.ONEMANBAND_RANGE)
-    inst.components.leaderrollcall:SetMaxFollowers(TUNING.WATHGRITHR_SING_MAX_FOLLOWERS)
-    inst.components.leaderrollcall:SetCanTendFarmPlant(true)
-    inst.components.leaderrollcall:SetUpdateTime(1)
-    inst.components.leaderrollcall:Disable()
 
     local function LinkUsher(inst, usher)
         inst.components.leader:AddFollower(usher)
@@ -93,12 +99,19 @@ AddPrefabPostInit("wathgrithr", function(inst)
         if inst._stageusher ~= nil and inst._stageusher:IsValid() then
             data._stageusher = inst._stageusher:GetSaveRecord()
         end
+        data._wathgrithr_acts_done = {}
+        for k, v in pairs(inst._wathgrithr_acts_done) do
+            data._wathgrithr_acts_done[k] = v
+        end
     end
 
     local old_onload = inst._OnLoad
     inst._OnLoad = function(inst, data)
         if old_onload then old_onload(inst, data) end
         inst:StartUpdatingComponent(inst.components.singinginspiration)
+        if data ~= nil and data._wathgrithr_acts_done ~= nil then
+            inst._wathgrithr_acts_done = data._wathgrithr_acts_done
+        end
         if data ~= nil and data._stageusher ~= nil then
             local usher = SpawnSaveRecord(data._stageusher)
             if usher ~= nil then

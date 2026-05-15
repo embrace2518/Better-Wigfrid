@@ -54,9 +54,12 @@ end
             end
         elseif self.inst:HasTag("wathgrithr_singing") then
             self.is_draining = true
-        else
+        elseif self.inst:HasPlaybill() then
             self.is_draining = false
-            self:DoDelta((20 / TUNING.TOTAL_DAY_TIME) * dt)
+            local rate = (self.inst.GetActDone("act1") and self.inst.GetActDone("act2") and self.inst.GetActDone("act3")) and 25 or 20
+            self:DoDelta((rate / TUNING.TOTAL_DAY_TIME) * dt)
+        else
+            self.is_draining = true
         end
 
         if self.current == self.max and not self.inst.components.showmode:IsActive()

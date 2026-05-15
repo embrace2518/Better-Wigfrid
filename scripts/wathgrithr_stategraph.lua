@@ -101,3 +101,33 @@ AddStategraphPostInit('wilson', function(sg)
         end
     end
 end)
+
+-- 第二幕：手持剧本右键敌人指令舞台之手攻击
+local COMMAND_STAGEUSher = Action({ priority = 2 })
+COMMAND_STAGEUSher.id = "WATHGRITHR_COMMAND_STAGEUSER"
+COMMAND_STAGEUSher.str = "舞台之手攻击"
+COMMAND_STAGEUSher.fn = function(act)
+    local doer = act.doer
+    local target = act.target
+    if doer._stageusher ~= nil and doer._stageusher:IsValid()
+        and target ~= nil and target:IsValid()
+        and doer._stageusher.components.combat ~= nil then
+        doer._stageusher.components.combat:SetTarget(target)
+        return true
+    end
+    return false
+end
+AddAction(COMMAND_STAGEUSher)
+
+AddStategraphActionHandler("wilson", GLOBAL.ActionHandler(COMMAND_STAGEUSher, "doshortaction"))
+AddStategraphActionHandler("wilson_client", GLOBAL.ActionHandler(COMMAND_STAGEUSher, "doshortaction"))
+
+AddComponentAction("SCENE", "combat", function(inst, doer, actions)
+    if doer.prefab == "wathgrithr"
+        and doer:GetActDone("act2")
+        and doer:HasPlaybill()
+        and doer._stageusher ~= nil
+        and doer._stageusher:IsValid() then
+        table.insert(actions, ACTIONS.WATHGRITHR_COMMAND_STAGEUSER)
+    end
+end)

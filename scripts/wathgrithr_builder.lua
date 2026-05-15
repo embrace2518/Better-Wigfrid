@@ -1,29 +1,28 @@
--- 灵感消耗配方支持（参考重生护肤的 CHARACTER_INGREDIENT.HEALTH）
-GLOBAL.CHARACTER_INGREDIENT.INSPIRATION = "decrease_inspiration"
+-- 普通战歌制作消耗80灵感
+local SONG_INSP_COST = 50
 
 AddComponentPostInit("builder", function(self)
-    local _old_HasCharacterIngredient = self.HasCharacterIngredient
-    function self:HasCharacterIngredient(ingredient)
-        if ingredient.type == GLOBAL.CHARACTER_INGREDIENT.INSPIRATION then
-            if self.inst.components.singinginspiration ~= nil then
-                local current = math.ceil(self.inst.components.singinginspiration.current)
-                return current >= ingredient.amount, current
-            end
-            return false, 0
-        end
-        return _old_HasCharacterIngredient(self, ingredient)
-    end
-
-    local _old_ConsumeIngredients = self.ConsumeIngredients
-    function self:ConsumeIngredients(recname, ...)
-        _old_ConsumeIngredients(self, recname, ...)
-        local recipe = GLOBAL.AllRecipes[recname]
-        if recipe then
-            for _, v in pairs(recipe.character_ingredients) do
-                if v.type == GLOBAL.CHARACTER_INGREDIENT.INSPIRATION then
-                    self.inst.components.singinginspiration:DoDelta(-v.amount)
+    local _old_HasIngredients = self.HasIngredients
+    function self:HasIngredients(recipe, ...)
+        if type(recipe) == "table" and recipe.name then
+            local name = recipe.name
+            if name:match("^battlesong_") and not name:match("^battlesong_instant") then
+                if not self.inst.components.singinginspiration
+                    or self.inst.components.singinginspiration.current < SONG_INSP_COST then
+                    return false
                 end
             end
         end
+        return _old_HasIngredients(self, recipe, ...)
+    end
+
+    local _old_DoBuild = self.DoBuild
+    function self:DoBuild(recname, pt, rot, skin, onsuccess)
+        if type(recname) == "string"
+            and recname:match("^battlesong_")
+            and not recname:match("^battlesong_instant") then
+            self.inst.components.singinginspiration:DoDelta(-SONG_INSP_COST)
+        end
+        return _old_DoBuild(self, recname, pt, rot, skin, onsuccess)
     end
 end)

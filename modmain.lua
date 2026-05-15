@@ -41,11 +41,13 @@ UPGRADETYPES.WATHGRITHR_BATTLESONG = "purebrilliance"
 
 -- 配方
 -- 普通战歌：莎草纸+羽毛笔+80灵感
-AddRecipe2("battlesong_durability",     {Ingredient("papyrus", 1), Ingredient("featherpencil", 1), Ingredient(CHARACTER_INGREDIENT.INSPIRATION, 80)}, TECH.NONE, {builder_tag="battlesinger"})
-AddRecipe2("battlesong_healthgain",     {Ingredient("papyrus", 1), Ingredient("featherpencil", 1), Ingredient(CHARACTER_INGREDIENT.INSPIRATION, 80)}, TECH.NONE, {builder_tag="battlesinger"})
-AddRecipe2("battlesong_sanitygain",     {Ingredient("papyrus", 1), Ingredient("featherpencil", 1), Ingredient(CHARACTER_INGREDIENT.INSPIRATION, 80)}, TECH.NONE, {builder_tag="battlesinger"})
-AddRecipe2("battlesong_sanityaura",     {Ingredient("papyrus", 1), Ingredient("featherpencil", 1), Ingredient(CHARACTER_INGREDIENT.INSPIRATION, 80)}, TECH.NONE, {builder_tag="battlesinger"})
-AddRecipe2("battlesong_fireresistance", {Ingredient("papyrus", 1), Ingredient("featherpencil", 1), Ingredient(CHARACTER_INGREDIENT.INSPIRATION, 80)}, TECH.NONE, {builder_tag="battlesinger"})
+AddRecipe2("battlesong_durability",     {Ingredient("papyrus", 1), Ingredient("featherpencil", 1)}, TECH.NONE, {builder_tag="battlesinger"})
+AddRecipe2("battlesong_healthgain",     {Ingredient("papyrus", 1), Ingredient("featherpencil", 1)}, TECH.NONE, {builder_tag="battlesinger"})
+AddRecipe2("battlesong_sanitygain",     {Ingredient("papyrus", 1), Ingredient("featherpencil", 1)}, TECH.NONE, {builder_tag="battlesinger"})
+AddRecipe2("battlesong_sanityaura",     {Ingredient("papyrus", 1), Ingredient("featherpencil", 1)}, TECH.NONE, {builder_tag="battlesinger"})
+AddRecipe2("battlesong_fireresistance", {Ingredient("papyrus", 1), Ingredient("featherpencil", 1)}, TECH.NONE, {builder_tag="battlesinger"})
+
+AddRecipe2("playbill_the_doll",         {Ingredient("papyrus", 4), Ingredient("featherpencil", 1), Ingredient("livinglog", 2)},   TECH.NONE, {builder_tag="battlesinger"})
 
 -- 即时战歌：配方材料锁定（sewing_mannequin 不可制作）
 AddRecipe2("battlesong_instant_taunt",  {Ingredient("papyrus", 1), Ingredient("featherpencil", 1), Ingredient("sewing_mannequin", 1)}, TECH.NONE, {builder_tag="battlesinger"})

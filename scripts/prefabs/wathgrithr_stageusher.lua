@@ -40,17 +40,16 @@ local function OnLeaderChanged(inst, data)
             end
         end
         inst:ListenForEvent("attacked", inst._on_leader_attacked, data.new)
-        -- 轮询主人演出状态同步 NOCLICK（替代事件耦合）
-        if inst._noclick_task ~= nil then
-            inst._noclick_task:Cancel()
+        if inst._container_check_task ~= nil then
+            inst._container_check_task:Cancel()
         end
-        inst._noclick_task = inst:DoPeriodicTask(0.5, function()
+        inst._container_check_task = inst:DoPeriodicTask(1, function()
             local owner = GetOwner(inst)
-            if owner and owner.components.showmode and owner.components.showmode:IsActive() then
-                inst:AddTag("NOCLICK")
-            else
-                inst:RemoveTag("NOCLICK")
-            end
+            local can_open = owner ~= nil
+                and owner.GetActDone ~= nil
+                and owner:GetActDone("act3")
+                and not (owner.components.showmode and owner.components.showmode:IsActive())
+            inst.components.container_proxy:SetCanBeOpened(can_open)
         end)
         inst:PushEvent("standup")
     end
@@ -273,9 +272,8 @@ local function stageusher_fn()
     inst:AddComponent("knownlocations")
 
     ----------------------------------------------------------------------------
-    inst:AddComponent("container")
-    inst.components.container:WidgetSetup("chester")
-    rawset(inst.components.container, "itemtestfn", function(container, item, slot) return item:HasTag("battlesong") end)
+    inst:AddComponent("container_proxy")
+    inst.components.container_proxy:SetMaster(TheWorld:GetPocketDimensionContainer("wathgrithr_stageusher"))
 
     ----------------------------------------------------------------------------
     inst:AddComponent("health")
